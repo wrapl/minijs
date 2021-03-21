@@ -1,0 +1,63 @@
+def onion := import("../Minilang/lib/ml_onion.so")
+def connection_status := onion::connection_status
+
+var Onion := onion::new()
+var Root := Onion:root_url
+
+Root:add(""; Request, Response) do
+	print("Path = ", Request:get_path, "\n")
+	print("Full Path = ", Request:get_fullpath, "\n")
+	let File := file("index.xhtml", "r")
+	Response:set_header("Content-Type", "application/xhtml+xml")
+	Response:write(File:read(10000000))
+	File:close
+	Response:flush
+end
+
+Root:add("minilang.js"; Request, Response) do
+	print("Path = ", Request:get_path, "\n")
+	print("Full Path = ", Request:get_fullpath, "\n")
+	let File := file("minilang.js", "r")
+	Response:set_header("Content-Type", "text/javascript")
+	Response:write(File:read(10000000))
+	File:close
+	Response:flush
+end
+
+Root:add("test.js"; Request, Response) do
+	print("Path = ", Request:get_path, "\n")
+	print("Full Path = ", Request:get_fullpath, "\n")
+	let File := file("test.js", "r")
+	Response:set_header("Content-Type", "text/javascript")
+	Response:write(File:read(10000000))
+	File:close
+	Response:flush
+end
+
+let Encoder := jsencoder()
+for Name, Value in globals() do
+	Encoder:add(Value, Name)
+end
+
+Root:add("compile"; Request, Response) do
+	let Compiler := compiler(global)
+	let Input := Request:get_post("input")
+	print("Input = ", Input, "\n")
+	Compiler:input(Input)
+	do
+		let Function := Compiler:compile
+		Response:write(Encoder:encode(Function))
+	on Error do
+		Response:set_code(400)
+		Response:set_header("Content-Type", "text/plain")
+		Response:write('{Error:type}\n')
+		Response:write('{Error:message}\n')
+		for (Source, Line) in Response:trace do
+			Response:write('\t{Source}:{Line}\n')
+		end
+	end
+	Response:flush
+end
+
+Onion:set_port("9001")
+Onion:listen
