@@ -436,6 +436,11 @@ MLMapT.of = ml_method("map::of");
 MLMapT.prototype.iterate = function(caller) {
 	ml_resume(caller, this.head || MLNil);
 }
+MLMapT.prototype.forEach = function(callback) {
+	for (var node = this.head; node; node = node.next) {
+		callback(node.key, node.value);
+	}
+}
 function ml_map() {
 	return ml_value(MLMapT, {nodes: {}, size: 0, head: null, tail: null});
 }
