@@ -854,7 +854,7 @@ function ml_frame_run(result) {
 		break;
 	case 50: {//MLI_MAP_INSERT,
 		let key = stack.pop();
-		stack[stack.length - 1].insert(key, result.deref());
+		ml_map_insert(stack[stack.length - 1], key, result.deref());
 		ip += 2;
 		break;
 	}
