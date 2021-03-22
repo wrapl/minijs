@@ -7,7 +7,8 @@ export {
 	ml_map_insert, ml_map_delete, ml_map_search,
 	MLAnyT, MLNil, MLNilT, MLSome, MLSomeT, MLErrorT,
 	MLBooleanT, MLNumberT, MLStringT, MLListT, MLMapT,
-	MLMethodT, MLTupleT, MLFunctionT, MLIteratableT
+	MLMethodT, MLTupleT, MLFunctionT, MLIteratableT,
+	MLClosureT
 };
 
 const Trampolines = [];
