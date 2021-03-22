@@ -59,19 +59,20 @@ function ml_iter_value(caller, value) {
 const DefaultMethods = {
 	hash: function() { return this.type.name; },
 	deref: function() { return this; },
-	assign: function(value) {},
+	assign: function() { return ml_error("TypeError", `<${this.type.name}> is not assignable`); },
 	invoke: function(caller, args) {}
 };
 
 const MLTypeT = {
 	name: "type",
-	parents: [],
 	prototype: {},
 	rank: 2,
 	hash: function() {},
 	deref: function() { return this; },
-	assign: function(value) {},
-	invoke: function(caller, args) {}
+	assign: function() { return ml_error("TypeError", `<${this.type.name}> is not assignable`); },
+	invoke: function(caller, args) {
+		ml_resume(caller, args[0].type);
+	}
 };
 MLTypeT.type = MLTypeT;
 MLTypeT.prototype.type = MLTypeT;
@@ -82,6 +83,7 @@ MLTypeT.prototype.invoke = function(caller, args) {
 MLTypeT.of = function(caller, args) {
 	ml_resume(caller, args[0].type);
 }
+Globals.type = MLTypeT;
 
 function ml_type(name, parents, methods) {
 	parents = parents || [];
@@ -112,6 +114,7 @@ function ml_is(value, type) {
 }
 
 const MLAnyT = ml_type("any");
+MLTypeT.parents = [MLTypeT, MLAnyT];
 
 function ml_identity(caller, args) {
 	ml_resume(caller, args[0]);
@@ -492,7 +495,7 @@ function ml_map_delete(map, key) {
 }
 function ml_map_search(map, key) {
 	let hash = key.hash();
-	let nodes = this.nodes[hash];
+	let nodes = map.nodes[hash];
 	if (nodes) for (var i = 0; i < nodes.length; ++i) {
 		let node = nodes[i];
 		if (node.key === key) return node;
@@ -512,9 +515,7 @@ const MLVariableT = ml_type("variable", [], {
 	assign: function(value) { return this.value = value; }
 });
 
-const MLUninitializedT = ml_type("uninitialized", [], {
-	assign: function(value) {}
-});
+const MLUninitializedT = ml_type("uninitialized");
 function ml_uninitialized(name) {
 	return ml_value(MLUninitializedT, {name, uses: []});
 }
@@ -548,8 +549,7 @@ function ml_global(value) {
 	return ml_value(MLGlobalT, {value});
 }
 
-const MLFrameT = ml_type("frame", [MLFunctionT], {
-});
+const MLFrameT = ml_type("frame", [MLFunctionT]);
 
 const MLClosureT = ml_type("closure", [MLFunctionT], {
 	invoke: ml_closure_invoke
@@ -947,6 +947,11 @@ Globals.count = function(caller, args) {
 	}};
 	ml_iterate(state, args[0]);
 }
+
+ml_method_define("append", [MLStringBufferT, MLTypeT], false, function(caller, args) {
+	args[0].string += "<" + args[1].name + ">";
+	ml_resume(caller, args[0]);
+});
 
 ml_method_define("=", [MLAnyT, MLAnyT], false, function(caller, args) {
 	ml_resume(caller, args[0] === args[1] ? args[1] : MLNil);
