@@ -1,6 +1,22 @@
+export {
+	ml_call, ml_resume, ml_is,
+	ml_iterate, ml_iter_next, ml_iter_key, ml_iter_value,
+	ml_value, ml_type, ml_method, ml_list, ml_map, ml_tuple,
+	ml_stringbuffer, ml_error, ml_error_trace_add,
+	ml_method_define, ml_identity, ml_decode, Globals,
+	ml_map_insert, ml_map_delete, ml_map_search,
+	MLAnyT, MLNil, MLNilT, MLSome, MLSomeT, MLErrorT,
+	MLBooleanT, MLNumberT, MLStringT, MLListT, MLMapT,
+	MLMethodT, MLTupleT, MLFunctionT, MLIteratableT
+};
+
 const Trampolines = [];
 const MethodsCache = {};
 const Globals = {};
+
+const EndState = {run: function(value) {
+	console.log("Result: ", value);
+}}
 
 var mlRunning = false;
 function ml_exec() {
@@ -23,6 +39,7 @@ function ml_resume(state, value) {
 	ml_exec(state.run.bind(state), value);
 }
 function ml_call(caller, value, args) {
+	caller = caller || EndState;
 	ml_exec(value.invoke.bind(value), caller, args);
 }
 function ml_iterate(caller, value) {
@@ -396,6 +413,9 @@ MLListT.prototype.iterate = function(caller) {
 }
 Array.prototype.type = MLListT;
 Array.prototype.deref = DefaultMethods.deref;
+function ml_list() {
+	return [];
+}
 
 const MLMapNodeT = ml_type("map-node", [], {
 	deref: function() { return this.value; },
@@ -1295,10 +1315,6 @@ ml_method_define("append", [MLStringBufferT, MLMapT], false, function(caller, ar
 	buffer.string += "{";
 	ml_call(state, appendMethod, [buffer, node.key]);
 });
-
-const EndState = {run: function(value) {
-	console.log("Result: ", value);
-}}
 
 function ml_decode(value, cache) {
 	switch (typeof(value)) {
