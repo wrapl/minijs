@@ -196,18 +196,16 @@ function ml_method_define(method, types, variadic, func) {
 	method.signatures = {};
 }
 
-const MLBooleanT = ml_type("boolean", [], {
-	hash: function() { return this.toString(); }
-});
+const MLBooleanT = ml_type("boolean");
 MLBooleanT.of = ml_method("number::of");
 Boolean.prototype.type = MLBooleanT;
-Boolean.prototype.deref = DefaultMethods.deref;
+Boolean.prototype.deref = function() { return this.valueOf(); };
 
 const MLNumberT = ml_type("number", [MLFunctionT]);
 MLNumberT.of = ml_method("number::of");
 Number.prototype.type = MLNumberT;
 Number.prototype.hash = function() { return this.toString(); };
-Number.prototype.deref = function() { return +this; };
+Number.prototype.deref = function() { return this.valueOf(); };
 Number.prototype.invoke = function(caller, args) {
 	var index = this - 1;
 	if (index < 0) index += args.length + 1;
@@ -244,12 +242,12 @@ MLRangeT.prototype.iterate = function(caller) {
 const MLStringT = ml_type("string", [MLIteratableT]);
 MLStringT.of = ml_method("string::of");
 String.prototype.type = MLStringT;
-String.prototype.hash = function() { return this; };
-String.prototype.deref = DefaultMethods.deref;
+String.prototype.hash = function() { return this.valueOf(); };
+String.prototype.deref = function() { return this.valueOf(); };
 
 const MLJFunctionT = ml_type("function");
 Function.prototype.type = MLJFunctionT;
-Function.prototype.deref = DefaultMethods.deref;
+Function.prototype.deref = function() { return this.toString(); }
 Function.prototype.invoke = function(caller, args) {
 	for (var i = 0; i < args.length; ++i) args[i] = args[i].deref();
 	this(caller, args);
@@ -412,7 +410,7 @@ MLListT.prototype.iterate = function(caller) {
 	ml_resume(caller, ml_value(MLListNodeT, {list: this, index: 0}));
 }
 Array.prototype.type = MLListT;
-Array.prototype.deref = DefaultMethods.deref;
+Array.prototype.deref = function() { return this; };
 function ml_list() {
 	return [];
 }
