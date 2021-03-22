@@ -241,11 +241,10 @@ MLRangeT.prototype.iterate = function(caller) {
 	ml_resume(caller, ml_value(MLRangeIterT, {max: this.max, key: 1, value: this.min}));
 }
 
-const MLStringT = ml_type("string", [MLIteratableT], {
-	hash: function() { return this; }
-});
+const MLStringT = ml_type("string", [MLIteratableT]);
 MLStringT.of = ml_method("string::of");
 String.prototype.type = MLStringT;
+String.prototype.hash = function() { return this; };
 String.prototype.deref = DefaultMethods.deref;
 
 const MLJFunctionT = ml_type("function");
