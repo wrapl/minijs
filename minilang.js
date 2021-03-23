@@ -995,7 +995,7 @@ export function ml_module(name, exports) {
 	return ml_value(MLModuleT, {name, exports});
 }
 
-Globals.print = function(caller, _, args) {
+Globals.print = function(caller, args) {
 	if (args.length === 0) return ml_resume(caller, MLNil);
 	let buffer = ml_stringbuffer();
 	let state = {caller, index: 1, run: function(value) {
@@ -1009,7 +1009,7 @@ Globals.print = function(caller, _, args) {
 	ml_call(state, appendMethod, [buffer, args[0]]);
 }
 
-Globals.count = function(caller, _, args) {
+Globals.count = function(caller, args) {
 	let state = {caller, count: 0, run: function(value) {
 		if (value.type === MLErrorT) {
 			ml_resume(self.caller, value);
