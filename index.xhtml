@@ -25,10 +25,10 @@ let executeElement = document.getElementById("execute");
 
 Globals.print = function(caller, args) {
 	if (args.length === 0) return ml_resume(caller, MLNil);
-	let state = {caller, index: 1, run: function(value) {
+	let state = {caller, index: 1, run: function(self, value) {
 		consoleElement.appendChild(document.createTextNode(value.toString()));
-		if (this.index === args.length) return ml_resume(this.caller, MLNil);
-		ml_call(this, MLStringT.of, [args[this.index++]]);
+		if (self.index === args.length) return ml_resume(self.caller, MLNil);
+		ml_call(self, MLStringT.of, [args[self.index++]]);
 	}};
 	ml_call(state, MLStringT.of, [args[0]]);
 }

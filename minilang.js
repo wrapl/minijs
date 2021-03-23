@@ -1,26 +1,13 @@
-export {
-	ml_call, ml_resume, ml_is,
-	ml_iterate, ml_iter_next, ml_iter_key, ml_iter_value,
-	ml_value, ml_type, ml_method, ml_list, ml_map, ml_tuple,
-	ml_stringbuffer, ml_error, ml_error_trace_add,
-	ml_method_define, ml_identity, ml_decode, Globals,
-	ml_map_insert, ml_map_delete, ml_map_search,
-	MLAnyT, MLNil, MLNilT, MLSome, MLSomeT, MLErrorT,
-	MLBooleanT, MLNumberT, MLStringT, MLListT, MLMapT,
-	MLMethodT, MLTupleT, MLFunctionT, MLIteratableT,
-	MLClosureT
-};
-
 const Trampolines = [];
 const MethodsCache = {};
-const Globals = {};
+export const Globals = {};
 
-const EndState = {run: function(value) {
+const EndState = {run: function(self, value) {
 	console.log("Result: ", value);
 }}
 
 var mlRunning = false;
-function ml_exec() {
+export function ml_exec() {
 	function ml_loop() {
 		while (Trampolines.length) {
 			let trampoline = Trampolines.shift();
@@ -36,59 +23,77 @@ function ml_exec() {
 	}
 }
 
-function ml_resume(state, value) {
-	ml_exec(state.run.bind(state), value);
+export function ml_resume(state, value) {
+	ml_exec(state.run, state, value);
 }
-function ml_call(caller, value, args) {
-	caller = caller || EndState;
-	ml_exec(value.invoke.bind(value), caller, args);
+
+export function ml_hash(self) {
+	return self.type.hash(self);
 }
-function ml_iterate(caller, value) {
-	ml_exec(value.iterate.bind(value), caller);
+
+export function ml_deref(self) {
+	return self.type.deref(self);
 }
-function ml_iter_next(caller, value) {
-	ml_exec(value.iter_next.bind(value), caller);
+
+export function ml_assign(self, value) {
+	return self.type.assign(self, value);
 }
-function ml_iter_key(caller, value) {
-	ml_exec(value.iter_key.bind(value), caller);
+
+export function ml_call(caller, self, args) {
+	ml_exec(self.type.call, caller || EndState, self, args);
 }
-function ml_iter_value(caller, value) {
-	ml_exec(value.iter_value.bind(value), caller);
+
+export function ml_iterate(caller, self) {
+	ml_exec(self.type.iterate, caller, self);
+}
+
+export function ml_iter_next(caller, self) {
+	ml_exec(self.type.iter_next, caller, self);
+}
+
+export function ml_iter_key(caller, self) {
+	ml_exec(self.type.iter_key, caller, self);
+}
+
+export function ml_iter_value(caller, self) {
+	ml_exec(self.type.iter_value, caller, self);
+}
+
+export function ml_unpack(self, index) {
+	return self.type.unpack(self, index);
 }
 
 const DefaultMethods = {
-	hash: function() { return this.type.name; },
-	deref: function() { return this; },
-	assign: function() { return ml_error("TypeError", `<${this.type.name}> is not assignable`); },
-	invoke: function(caller, args) {}
+	hash: function(self) { return self.toString(); },
+	deref: function(self) { return self; },
+	assign: function(self, _) { return ml_error("TypeError", `<${self.type.name}> is not assignable`); },
+	call: function(caller, self, args) {
+		ml_call(caller, callMethod, [self].concat(args));
+	}
 };
 
-const MLTypeT = {
+export const MLTypeT = {
 	name: "type",
 	prototype: {},
 	rank: 2,
-	hash: function() {},
-	deref: function() { return this; },
-	assign: function() { return ml_error("TypeError", `<${this.type.name}> is not assignable`); },
-	invoke: function(caller, args) {
+	hash: function(self) { return `<${self.type.name}>`; },
+	deref: DefaultMethods.deref,
+	assign: DefaultMethods.assign,
+	call: function(caller, self, args) {
+		ml_call(caller, self.of, args);
+	},
+	of: function(caller, args) {
 		ml_resume(caller, args[0].type);
 	}
 };
 MLTypeT.type = MLTypeT;
 MLTypeT.prototype.type = MLTypeT;
-MLTypeT.prototype.deref = DefaultMethods.deref;
-MLTypeT.prototype.invoke = function(caller, args) {
-	return ml_call(caller, this.of, args);
-}
-MLTypeT.of = function(caller, args) {
-	ml_resume(caller, args[0].type);
-}
 Globals.type = MLTypeT;
 
-function ml_type(name, parents, methods) {
+export function ml_type(name, parents, methods) {
 	parents = parents || [];
 	if (name !== 'any') parents.push(MLAnyT);
-	const type = Object.create(MLTypeT.prototype);
+	const type = Object.assign(Object.create(MLTypeT.prototype), DefaultMethods, methods);
 	type.name = name;
 	type.parents = parents;
 	var rank = 0;
@@ -97,51 +102,99 @@ function ml_type(name, parents, methods) {
 	}
 	type.rank = rank + 1;
 	type.parents.unshift(type);
-	type.prototype = Object.assign({type}, DefaultMethods, methods);
+	type.prototype = {type};
 	Globals[name] = type;
 	return type;
 }
 
-function ml_value(type, fields) {
+export function ml_value(type, fields) {
 	return Object.assign(Object.create(type.prototype), fields);
 }
 
-function ml_is(value, type) {
+export function ml_is(value, type) {
 	if (value.type === type) return true;
 	if (value.type.parents.indexOf(type) > -1) return true;
 	if (type === MLAnyT) return true;
 	return false;
 }
 
-const MLAnyT = ml_type("any");
+export const MLAnyT = ml_type("any");
 MLTypeT.parents = [MLTypeT, MLAnyT];
 
-function ml_identity(caller, args) {
+export function ml_identity(caller, args) {
 	ml_resume(caller, args[0]);
 }
 
-const MLFunctionT = ml_type("function");
-const MLIteratableT = ml_type("iteratable");
+export const MLFunctionT = ml_type("function");
+export const MLIteratableT = ml_type("iteratable");
 
-const MLNilT = ml_type("nil");
-const MLNil = ml_value(MLNilT);
+export const MLNilT = ml_type("nil");
+export const MLNil = ml_value(MLNilT);
 
-const MLSomeT = ml_type("some");
-const MLSome = ml_value(MLSomeT);
+export const MLSomeT = ml_type("some");
+export const MLSome = ml_value(MLSomeT);
 
-const MLErrorT = ml_type("error");
-function ml_error(short, message) {
+export const MLErrorT = ml_type("error");
+export function ml_error(short, message) {
 	return ml_value(MLErrorT, {short, message, stack: []});
 }
-function ml_error_trace_add(error, source, line) {
+export function ml_error_trace_add(error, source, line) {
 	error.stack.push([source, line]);
 }
 
-const MLMethodT = ml_type("method", [MLFunctionT], {
-	hash: function() { return ":" + this.name; },
-	invoke: ml_method_invoke
+export const MLErrorValueT = ml_type("error-value");
+export function ml_error_value(error) {
+	let short = error.short;
+	let message = error.message;
+	let stack = error.stack;
+	return ml_value(MLErrorValueT, {short, message, stack});
+}
+
+export const MLMethodT = ml_type("method", [MLFunctionT], {
+	hash: function(self) { return ":" + self.name; },
+	call: function(caller, self, args) {
+		var signature = "";
+		for (var i = 0; i < args.length; ++i) {
+			args[i] = ml_deref(args[i]);
+			signature += "/" + args[i].type.name;
+		}
+		var func = self.signatures[signature];
+		if (!func) {
+			var bestScore = 0;
+			var bestFunc = null;
+			let count = args.length;
+			for (var i = 0; i < self.definitions.length; ++i) {
+				let definition = self.definitions[i];
+				if (definition.count > count) continue;
+				if (definition.count < count && !definition.variadic) continue;
+				let score = score_definition(definition.types, args);
+				if (score > bestScore) {
+					bestScore = score;
+					bestFunc = definition.func;
+				}
+			}
+			if (!bestFunc) {
+				signature = "";
+				for (var i = 0; i < args.length; ++i) signature += ", " + args[i].type.name;
+				signature = signature.substring(2);
+				return ml_resume(caller, ml_error("MethodError", `no method found for ${self.name}(${signature})`));
+			}
+			func = self.signatures[signature] = bestFunc;
+		}
+		return ml_call(caller, func, args);
+		
+		function score_definition(types, args) {
+			var score = 0;
+			for (var i = 0; i < types.length; ++i) {
+				let type = types[i];
+				if (args[i].type.parents.indexOf(type) === -1) return -1;
+				score += type.rank;
+			}
+			return score;
+		}
+	}
 });
-function ml_method(name) {
+export function ml_method(name) {
 	if (name === null) return ml_value(MLMethodT, {name});
 	let value = MethodsCache[name];
 	if (value) return value;
@@ -151,120 +204,86 @@ function ml_method(name) {
 		signatures: {}
 	})); 
 }
-function ml_method_invoke(caller, args) {
-	var signature = "";
-	for (var i = 0; i < args.length; ++i) {
-		args[i] = args[i].deref();
-		signature += "/" + args[i].type.name;
-	}
-	var func = this.signatures[signature];
-	if (!func) {
-		var bestScore = 0;
-		var bestFunc = null;
-		let count = args.length;
-		for (var i = 0; i < this.definitions.length; ++i) {
-			let definition = this.definitions[i];
-			if (definition.count > count) continue;
-			if (definition.count < count && !definition.variadic) continue;
-			let score = score_definition(definition.types, args);
-			if (score > bestScore) {
-				bestScore = score;
-				bestFunc = definition.func;
-			}
+export function ml_method_define(method, types, variadic, func) {
+	if (typeof(method) === 'string') {
+		method = ml_method(method);
+	} else if (method.type === MLTypeT) {
+		let type = method;
+		method = type.of;
+		if (method === undefined) {
+			method = type.of = ml_method(type.name + "::of");
 		}
-		if (!bestFunc) {
-			signature = "";
-			for (var i = 0; i < args.length; ++i) signature += ", " + args[i].type.name;
-			signature = signature.substring(2);
-			return ml_resume(caller, ml_error("MethodError", `no method found for ${this.name}(${signature})`));
-		}
-		func = this.signatures[signature] = bestFunc;
 	}
-	return ml_call(caller, func, args);
-	
-	function score_definition(types, args) {
-		var score = 0;
-		for (var i = 0; i < types.length; ++i) {
-			let type = types[i];
-			if (args[i].type.parents.indexOf(type) === -1) return -1;
-			score += type.rank;
-		}
-		return score;
-	}
-}
-function ml_method_define(method, types, variadic, func) {
-	if (typeof(method) === 'string') method = ml_method(method);
 	let count = types.length;
 	method.definitions.push({count, types, variadic, func});
 	method.signatures = {};
 }
 
-const MLBooleanT = ml_type("boolean");
-MLBooleanT.of = ml_method("number::of");
+let appendMethod = ml_method("append");
+let callMethod = ml_method("()");
+let symbolMethod = ml_method("::");
+
+export const MLBooleanT = ml_type("boolean");
 Boolean.prototype.type = MLBooleanT;
-Boolean.prototype.deref = function() { return this.valueOf(); };
 
-const MLNumberT = ml_type("number", [MLFunctionT]);
-MLNumberT.of = ml_method("number::of");
+export const MLNumberT = ml_type("number", [MLFunctionT], {
+	call: function(caller, self, args) {
+		var index = self - 1;
+		if (index < 0) index += args.length + 1;
+		if (index < 0) {	
+			ml_resume(caller, MLNil);
+		} else if (index >= args.length) {
+			ml_resume(caller, MLNil);
+		} else {
+			ml_resume(caller, args[index]);
+		}
+	}
+});
 Number.prototype.type = MLNumberT;
-Number.prototype.hash = function() { return this.toString(); };
-Number.prototype.deref = function() { return this.valueOf(); };
-Number.prototype.invoke = function(caller, args) {
-	var index = this - 1;
-	if (index < 0) index += args.length + 1;
-	if (index < 0) {	
-		ml_resume(caller, MLNil);
-	} else if (index >= args.length) {
-		ml_resume(caller, MLNil);
-	} else {
-		ml_resume(caller, args[index]);
-	}
-}
 
-const MLRangeIterT = ml_type("range-iter");
-MLRangeIterT.prototype.iter_next = function(caller) {
-	this.value += 1;
-	if (this.value > this.max) {
-		ml_resume(caller, MLNil);
-	} else {
-		this.key += 1;
-		ml_resume(caller, this);
+const MLRangeIterT = ml_type("range-iter", [], {
+	iter_next: function(caller, self) {
+		self.value += 1;
+		if (self.value > self.max) {
+			ml_resume(caller, MLNil);
+		} else {
+			self.key += 1;
+			ml_resume(caller, self);
+		}
+	},
+	iter_key: function(caller, self) {
+		ml_resume(caller, self.key);
+	},
+	iter_value: function(caller, self) {
+		ml_resume(caller, self.value);
 	}
-}
-MLRangeIterT.prototype.iter_key = function(caller) {
-	ml_resume(caller, this.key);
-}
-MLRangeIterT.prototype.iter_value = function(caller) {
-	ml_resume(caller, this.value);
-}
-const MLRangeT = ml_type("range", [MLIteratableT]);
-MLRangeT.prototype.iterate = function(caller) {
-	ml_resume(caller, ml_value(MLRangeIterT, {max: this.max, key: 1, value: this.min}));
-}
+});
+export const MLRangeT = ml_type("range", [MLIteratableT], {
+	iterate: function(caller, self) {
+		ml_resume(caller, ml_value(MLRangeIterT, {max: self.max, key: 1, value: self.min}));
+	}
+});
 
-const MLStringT = ml_type("string", [MLIteratableT]);
-MLStringT.of = ml_method("string::of");
+export const MLStringT = ml_type("string", [MLIteratableT]);
 String.prototype.type = MLStringT;
-String.prototype.hash = function() { return this.valueOf(); };
-String.prototype.deref = function() { return this.valueOf(); };
 
-const MLJFunctionT = ml_type("function");
+const MLJFunctionT = ml_type("function", [MLFunctionT], {
+	call: function(caller, self, args) {
+		for (var i = 0; i < args.length; ++i) args[i] = ml_deref(args[i]);
+		self(caller, args);
+	}
+});
 Function.prototype.type = MLJFunctionT;
-Function.prototype.deref = function() { return this.toString(); }
-Function.prototype.invoke = function(caller, args) {
-	for (var i = 0; i < args.length; ++i) args[i] = args[i].deref();
-	this(caller, args);
-}
 
 const MLPartialFunctionT = ml_type("partial-function", [MLFunctionT], {
-	invoke: function(caller, args) {
+	call: function(caller, self, args) {
 		let count = args.length;
-		var combinedCount = count + this.set;
-		if (combinedCount < this.count) combinedCount = this.count;
+		var combinedCount = count + self.set;
+		if (combinedCount < self.count) combinedCount = self.count;
 		let combinedArgs = new Array(combinedCount);
 		var i = 0, j = 0;
-		for (; i < this.count; ++i) {
-			let arg = this.args[i];
+		for (; i < self.count; ++i) {
+			let arg = self.args[i];
 			if (arg !== undefined) {
 				combinedArgs[i] = arg;
 			} else {
@@ -274,13 +293,13 @@ const MLPartialFunctionT = ml_type("partial-function", [MLFunctionT], {
 		for (; i < combinedCount; ++i) {
 			combinedArgs[i] = (j < count) ? args[j++] : MLNil;
 		}
-		ml_call(caller, this.func, combinedArgs);
+		ml_call(caller, self.func, combinedArgs);
 	}
 });
-function ml_partial_function(func, count) {
+export function ml_partial_function(func, count) {
 	return ml_value(MLPartialFunctionT, {func, count: 0, set: 0, args: new Array(count)});
 }
-function ml_partial_function_set(partial, index, value) {
+export function ml_partial_function_set(partial, index, value) {
 	partial.set += 1;
 	if (partial.count < index + 1) partial.count = index + 1;
 	partial.args[index] = value;
@@ -292,160 +311,189 @@ const filterSoloMethod = ml_method("->?");
 const filterDuoMethod = ml_method("=>?");
 
 const MLChainedFunctionT = ml_type("chained-function", [MLFunctionT, MLIteratableT], {
-	invoke: function(caller, args) {}
+	call: function(caller, self, args) {},
+	iterate: function(caller, self) {
+		let state = ml_value(MLChainedStateT, {
+			caller,
+			run: ml_chained_iterator_next,
+			entries: self.entries,
+			next: function(value) {
+				self.value = value;
+				let func = self.entries[self.index++];
+				if (func === undefined) return ml_resume(self.caller, self);
+				if (func === soloMethod) {
+					func = self.entries[self.index++];
+					if (func === undefined) return ml_resume(self.caller, ml_error("StateError", "Missing value function for chain"));
+					self.run = ml_chained_iterator_value;
+					ml_call(self, func, [value]);
+				} else if (func === duoMethod) {
+					func = self.entries[self.index++];
+					if (func === undefined) return ml_resume(self.caller, ml_error("StateError", "Missing value function for chain"));
+					self.run = ml_chained_iterator_duo_key;
+					ml_call(self, func, [self.key, value]);
+				} else if (func === filterSoloMethod) {
+					func = self.entries[self.index++];
+					if (func === undefined) return ml_resume(self.caller, ml_error("StateError", "Missing value function for chain"));
+					self.run = ml_chained_iterator_filter;
+					ml_call(self, func, [value]);
+				} else if (func === filterDuoMethod) {
+					func = self.entries[self.index++];
+					if (func === undefined) return ml_resume(self.caller, ml_error("StateError", "Missing value function for chain"));
+					self.run = ml_chained_iterator_filter;
+					ml_call(self, func, [self.key, value]);
+				} else {
+					self.run = ml_chained_iterator_value;
+					ml_call(self, func, [value]);
+				}
+			}
+		});
+		ml_iterate(state, self.entries[0]);
+	}
 });
-const MLChainedStateT = ml_type("chained-state");
-function ml_chained_iterator_next(value) {
-	if (value.type === MLErrorT) return ml_resume(this.caller, value);
-	if (value === MLNil) return ml_resume(this.caller, value);
-	this.run = ml_chained_iterator_key;
-	this.index = 1;
-	this.iter = value;
-	ml_iter_key(this, value);
+const MLChainedStateT = ml_type("chained-state", [], {
+	iter_next: function(caller, self) {
+		self.caller = caller;
+		self.run = ml_chained_iterator_next;
+		ml_iter_next(self, self.iter);
+	},
+	iter_key: function(caller, self) {
+		ml_resume(caller, self.key);
+	},
+	iter_value: function(caller, self) {
+		ml_resume(caller, self.value);
+	}
+});
+function ml_chained_iterator_next(self, value) {
+	if (value.type === MLErrorT) return ml_resume(self.caller, value);
+	if (value === MLNil) return ml_resume(self.caller, value);
+	self.run = ml_chained_iterator_key;
+	self.index = 1;
+	self.iter = value;
+	ml_iter_key(self, value);
 }
-function ml_chained_iterator_key(value) {
-	if (value.type === MLErrorT) return ml_resume(this.caller, value);
-	this.key = value;
-	this.run = ml_chained_iterator_value;
-	ml_iter_value(this, this.iter);
+function ml_chained_iterator_key(self, value) {
+	if (value.type === MLErrorT) return ml_resume(self.caller, value);
+	self.key = value;
+	self.run = ml_chained_iterator_value;
+	ml_iter_value(self, self.iter);
 }
-function ml_chained_iterator_filter(value) {
-	value = value.deref();
-	if (value.type === MLErrorT) return ml_resume(this.caller, value);
+function ml_chained_iterator_filter(self, value) {
+	value = ml_deref(value);
+	if (value.type === MLErrorT) return ml_resume(self.caller, value);
 	if (value === MLNil) {
-		this.run = ml_chained_iterator_next;
-		ml_iter_next(this, this.iter);
+		self.run = ml_chained_iterator_next;
+		ml_iter_next(self, self.iter);
 	} else {
-		this.next(value);
+		self.next(value);
 	}
 }
-function ml_chained_iterator_duo_key(value) {
-	value = value.deref();
-	if (value.type === MLErrorT) return ml_resume(this.caller, value);
-	let func = this.entries[this.index++];
-	if (func === undefined) return ml_resume(this.caller, ml_error("StateError", "Missing value function for chain"));
-	this.run = ml_chained_iterator_value;
-	let args = [this.key, this.value];
-	this.key = value;
-	ml_call(this, func, args);
+function ml_chained_iterator_duo_key(self, value) {
+	value = ml_deref(value);
+	if (value.type === MLErrorT) return ml_resume(self.caller, value);
+	let func = self.entries[self.index++];
+	if (func === undefined) return ml_resume(self.caller, ml_error("StateError", "Missing value function for chain"));
+	self.run = ml_chained_iterator_value;
+	let args = [self.key, self.value];
+	self.key = value;
+	ml_call(self, func, args);
 }
-function ml_chained_iterator_value(value) {
-	value = value.deref();
-	if (value.type === MLErrorT) return ml_resume(this.caller, value);
-	this.next(value);
+function ml_chained_iterator_value(self, value) {
+	value = ml_deref(value);
+	if (value.type === MLErrorT) return ml_resume(self.caller, value);
+	self.next(value);
 }
-MLChainedFunctionT.prototype.iterate = function(caller) {
-	let state = ml_value(MLChainedStateT, {caller,
-		run: ml_chained_iterator_next,
-		entries: this.entries,
-		next: function(value) {
-			this.value = value;
-			let func = this.entries[this.index++];
-			if (func === undefined) return ml_resume(this.caller, this);
-			if (func === soloMethod) {
-				func = this.entries[this.index++];
-				if (func === undefined) return ml_resume(this.caller, ml_error("StateError", "Missing value function for chain"));
-				this.run = ml_chained_iterator_value;
-				ml_call(this, func, [value]);
-			} else if (func === duoMethod) {
-				func = this.entries[this.index++];
-				if (func === undefined) return ml_resume(this.caller, ml_error("StateError", "Missing value function for chain"));
-				this.run = ml_chained_iterator_duo_key;
-				ml_call(this, func, [this.key, value]);
-			} else if (func === filterSoloMethod) {
-				func = this.entries[this.index++];
-				if (func === undefined) return ml_resume(this.caller, ml_error("StateError", "Missing value function for chain"));
-				this.run = ml_chained_iterator_filter;
-				ml_call(this, func, [value]);
-			} else if (func === filterDuoMethod) {
-				func = this.entries[this.index++];
-				if (func === undefined) return ml_resume(this.caller, ml_error("StateError", "Missing value function for chain"));
-				this.run = ml_chained_iterator_filter;
-				ml_call(this, func, [this.key, value]);
-			} else {
-				this.run = ml_chained_iterator_value;
-				ml_call(this, func, [value]);
-			}
-		}
-	});
-	ml_iterate(state, this.entries[0]);
-}
-MLChainedStateT.prototype.iter_next = function(caller) {
-	this.run = ml_chained_iterator_next;
-	ml_iter_next(this, this.iter);
-}
-MLChainedStateT.prototype.iter_key = function(caller) {
-	ml_resume(caller, this.key);
-}
-MLChainedStateT.prototype.iter_value = function(caller) {
-	ml_resume(caller, this.value);
-}
-function ml_chained(entries) {
+export function ml_chained(entries) {
 	if (entries.length === 1) return entries[0];
 	return ml_value(MLChainedFunctionT, {entries});
 }
 
-const MLTupleT = ml_type("tuple");
-function ml_tuple(size) {
+const MLTupleT = ml_type("tuple", [], {
+	unpack: function(self, index) {
+		if (index > self.values.length) return MLNil;
+		return self.values[index - 1];
+	}
+});
+export function ml_tuple(size) {
 	return ml_value(MLTupleT, {values: new Array(size)});
+}
+export function ml_tuple_set(tuple, index, value) {
+	tuple.values[index - 1] = value;
 }
 
 const MLListNodeT = ml_type("list-node", [], {
-	deref: function() { return this.list[this.index]; },
-	assign: function(value) { return this.list[this.index] = value; } 
+	deref: function(self) { return self.list[self.index]; },
+	assign: function(self, value) { return self.list[self.index] = value; },
+	iter_next: function(caller, self) {
+		let list = self.list;
+		let index = self.index + 1;
+		if (index >= list.length) {
+			ml_resume(caller, MLNil);
+		} else {
+			ml_resume(caller, ml_value(MLListNodeT, {list, index}));
+		}
+	},
+	iter_key: function(caller, self) {
+		ml_resume(caller, self.index + 1);
+	},
+	iter_value: function(caller, self) {
+		ml_resume(caller, self);
+	}
 });
-MLListNodeT.prototype.iter_next = function(caller) {
-	let list = this.list;
-	let index = this.index + 1;
-	if (index >= list.length) return ml_resume(caller, MLNil);
-	ml_resume(caller, ml_value(MLListNodeT, {list, index}));
-}
-MLListNodeT.prototype.iter_key = function(caller) {
-	ml_resume(caller, this.index + 1);
-}
-MLListNodeT.prototype.iter_value = function(caller) {
-	ml_resume(caller, this);
-}
-const MLListT = ml_type("list", [MLIteratableT]);
-MLListT.of = ml_method("list::of");
-MLListT.prototype.iterate = function(caller) {
-	if (!this.length) return ml_resume(caller, MLNil);
-	ml_resume(caller, ml_value(MLListNodeT, {list: this, index: 0}));
-}
+export const MLListT = ml_type("list", [MLIteratableT], {
+	iterate: function(caller, self) {
+		if (!self.length) return ml_resume(caller, MLNil);
+		ml_resume(caller, ml_value(MLListNodeT, {list: self, index: 0}));
+	},
+	unpack: function(self, index) {
+		if (index > self.length) return MLNil;
+		return self[index - 1];
+	}
+});
 Array.prototype.type = MLListT;
-Array.prototype.deref = function() { return this; };
-function ml_list() {
+export function ml_list() {
 	return [];
+}
+export function ml_list_push(list, value) {
+	list.unshift(value);
+}
+export function ml_list_put(list, value) {
+	list.push(value);
+}
+export function ml_list_pop(list) {
+	return list.shift();
+}
+export function ml_list_pull(list) {
+	return list.pop();
 }
 
 const MLMapNodeT = ml_type("map-node", [], {
-	deref: function() { return this.value; },
-	assign: function(value) { return this.value = value; }
+	deref: function(self) { return self.value; },
+	assign: function(self, value) { return self.value = value; },
+	iter_next: function(caller, self) {
+		ml_resume(caller, self.next || MLNil);
+	},
+	iter_key: function(caller, self) {
+		ml_resume(caller, self.key);
+	},
+	iter_value: function(caller, self) {
+		ml_resume(caller, self);
+	}
 });
-MLMapNodeT.prototype.iter_next = function(caller) {
-	ml_resume(caller, this.next || MLNil);
-}
-MLMapNodeT.prototype.iter_key = function(caller) {
-	ml_resume(caller, this.key);
-}
-MLMapNodeT.prototype.iter_value = function(caller) {
-	ml_resume(caller, this);
-}
-const MLMapT = ml_type("map", [MLIteratableT]);
-MLMapT.of = ml_method("map::of");
-MLMapT.prototype.iterate = function(caller) {
-	ml_resume(caller, this.head || MLNil);
-}
+export const MLMapT = ml_type("map", [MLIteratableT], {
+	iterate: function(caller, self) {
+		ml_resume(caller, self.head || MLNil);
+	}
+});
 MLMapT.prototype.forEach = function(callback) {
-	for (var node = this.head; node; node = node.next) {
+	for (var node = self.head; node; node = node.next) {
 		callback(node.key, node.value);
 	}
 }
-function ml_map() {
+export function ml_map() {
 	return ml_value(MLMapT, {nodes: {}, size: 0, head: null, tail: null});
 }
-function ml_map_insert(map, key, value) {
-	let hash = key.hash();
+export function ml_map_insert(map, key, value) {
+	let hash = ml_hash(key);
 	var nodes = map.nodes[hash];
 	if (!nodes) {
 		let node = ml_value(MLMapNodeT, {key, value});
@@ -471,9 +519,9 @@ function ml_map_insert(map, key, value) {
 	++map.size;
 	return MLNil;
 }
-function ml_map_delete(map, key) {
-	let hash = key.hash();
-	let nodes = this.nodes[hash];
+export function ml_map_delete(map, key) {
+	let hash = ml_hash(key);
+	let nodes = self.nodes[hash];
 	if (nodes) for (var i = 0; i < nodes.length; ++i) {
 		let node = nodes[i];
 		if (node.key === key) {
@@ -493,8 +541,8 @@ function ml_map_delete(map, key) {
 	}
 	return MLNil;
 }
-function ml_map_search(map, key) {
-	let hash = key.hash();
+export function ml_map_search(map, key) {
+	let hash = ml_hash(key);
 	let nodes = map.nodes[hash];
 	if (nodes) for (var i = 0; i < nodes.length; ++i) {
 		let node = nodes[i];
@@ -503,16 +551,16 @@ function ml_map_search(map, key) {
 	return null;
 }
 const MLMapIndexT = ml_type("map-index", [], {
-	deref: function() { return MLNil; },
-	assign: function(value) {
-		ml_map_insert(this.map, this.key, value);
+	deref: function(_) { return MLNil; },
+	assign: function(self, value) {
+		ml_map_insert(self.map, self.key, value);
 		return value;
 	}
 });
 
 const MLVariableT = ml_type("variable", [], {
-	deref: function() { return this.value; },
-	assign: function(value) { return this.value = value; }
+	deref: function(self) { return self.value; },
+	assign: function(self, value) { return self.value = value; }
 });
 
 const MLUninitializedT = ml_type("uninitialized");
@@ -531,18 +579,13 @@ function ml_uninitialized_set(uninitialized, value) {
 }
 
 const MLStringBufferT = ml_type("stringbuffer");
-MLStringBufferT.prototype.add = function(string) {
-	this.string += string;
-	return this;
-}
-function ml_stringbuffer() {
+export function ml_stringbuffer() {
 	return ml_value(MLStringBufferT, {string: ""});
 }
-let appendMethod = ml_method("append");
 
 const MLGlobalT = ml_type("global", [], {
-	invoke: function(caller, args) {
-		ml_call(caller, this.value, args);
+	call: function(caller, self, args) {
+		ml_call(caller, self.value, args);
 	}
 });
 function ml_global(value) {
@@ -552,44 +595,40 @@ function ml_global(value) {
 const MLFrameT = ml_type("frame", [MLFunctionT]);
 
 const MLClosureT = ml_type("closure", [MLFunctionT], {
-	invoke: ml_closure_invoke
+	call: function(caller, self, args) {
+		let info = self.info;
+		let stack = [];
+		let frame = ml_value(MLFrameT, {
+			caller,
+			run: ml_frame_run,
+			source: info[1],
+			line: info[2],
+			ip: info[9],
+			ep: info[10],
+			code: info[11],
+			stack,
+			upvalues: self.upvalues
+		});
+		for (var i = 0; i < info[4]; ++i) {
+			stack.push(args[i] || MLNil);
+		}
+		ml_resume(frame, MLNil);
+	}
 });
-function ml_closure(info, upvalues) {
-	return ml_value(MLClosureT, {info, upvalues});
-}
-function ml_closure_invoke(caller, args) {
-	let info = this.info;
-	let stack = [];
-	let frame = ml_value(MLFrameT, {
-		caller,
-		run: ml_frame_run,
-		source: info[1],
-		line: info[2],
-		ip: info[9],
-		ep: info[10],
-		code: info[11],
-		stack,
-		upvalues: this.upvalues
-	});
-	for (var i = 0; i < info[4]; ++i) {
-		stack.push(args[i] || MLNil);
-	}
-	ml_resume(frame, MLNil);
-}
-function ml_frame_run(result) {
-	var ip = this.ip;
+function ml_frame_run(self, result) {
+	var ip = self.ip;
 	if (result.type === MLErrorT) {
-		ml_error_trace_add(result, this.source, this.line);
-		ip = this.ep;
+		ml_error_trace_add(result, self.source, self.line);
+		ip = self.ep;
 	}
-	let code = this.code;
-	let stack = this.stack;
+	let code = self.code;
+	let stack = self.stack;
 	for (;;) switch (code[ip]) {
 	case 1: //MLI_RETURN,
-		return ml_resume(this.caller, result);
+		return ml_resume(self.caller, result);
 	case 2: //MLI_SUSPEND,
-		this.line = code[ip + 1];
-		return ml_resume(this.	caller, this);
+		self.line = code[ip + 1];
+		return ml_resume(self.	caller, self);
 	case 3: //MLI_RESUME,
 		stack.pop();
 		stack.pop();
@@ -609,21 +648,21 @@ function ml_frame_run(result) {
 		ip += 2;
 		break;
 	case 7: //MLI_AND,
-		if (result.deref() === MLNil) {
+		if (ml_deref(result) === MLNil) {
 			ip = code[ip + 2];
 		} else {
 			ip += 3;
 		}
 		break;
 	case 8: //MLI_OR,
-		if (result.deref() !== MLNil) {
+		if (ml_deref(result) !== MLNil) {
 			ip = code[ip + 2];
 		} else {
 			ip += 3;
 		}
 		break;
 	case 9: //MLI_NOT,
-		if (result.deref() === MLNil) {
+		if (ml_deref(result) === MLNil) {
 			result = MLSome;
 		} else {
 			result = MLNil;
@@ -675,14 +714,14 @@ function ml_frame_run(result) {
 		ip = code[ip + 2];
 		break;
 	case 18: //MLI_TRY,
-		this.ep = code[ip + 2];
+		self.ep = code[ip + 2];
 		ip += 3;
 		break;
 	case 19: //MLI_CATCH_TYPE,
 		if (result.type !== MLErrorT) {
 			result = ml_error("InternalError", `expected error, not ${result.type.name}`);
-			ml_error_trace_add(result, this.source, code[ip + 1]);
-			ip = this.ep;
+			ml_error_trace_add(result, self.source, code[ip + 1]);
+			ip = self.ep;
 		} else {
 			if (code[ip + 3].indexOf(result.type) === -1) {
 				ip = code[ip + 2];
@@ -694,8 +733,8 @@ function ml_frame_run(result) {
 	case 20: //MLI_CATCH,
 		if (result.type !== MLErrorT) {
 			result = ml_error("InternalError", `expected error, not ${result.type.name}`);
-			ml_error_trace_add(result, this.source, code[ip + 1]);
-			ip = this.ep;
+			ml_error_trace_add(result, self.source, code[ip + 1]);
+			ip = self.ep;
 		} else {
 			result = ml_error_value(result);
 			let top = code[ip + 2];
@@ -705,7 +744,7 @@ function ml_frame_run(result) {
 		}
 		break;
 	case 21: //MLI_RETRY,
-		ip = this.ep;
+		ip = self.ep;
 		break;
 	case 22: //MLI_LOAD,
 		result = code[ip + 2];
@@ -716,7 +755,7 @@ function ml_frame_run(result) {
 		ip += 3;
 		break;
 	case 24: //MLI_VAR,
-		result = result.deref();
+		result = ml_deref(result);
 		stack[stack.length + code[ip + 2]].value = result;
 		ip += 3;
 		break;
@@ -724,14 +763,23 @@ function ml_frame_run(result) {
 		ip += 3;
 		break;
 	case 26: //MLI_VARX,
+		let packed = ml_deref(result);
+		let index = stack.length + code[ip + 2];
+		let count = code[ip + 3];
+		for (var i = 0; i < count; ++i) {
+			result = ml_unpack(packed, i + 1);
+			result = ml_deref(result);
+			stack[index + i].value = result;
+		}
+		ip += 4;
 		break;
 	case 27: //MLI_LET,
-		result = result.deref();
+		result = ml_deref(result);
 		stack[stack.length + code[ip + 2]] = result;
 		ip += 3;
 		break;
 	case 28: {//MLI_LETI,
-		result = result.deref();
+		result = ml_deref(result);
 		let index = stack.length + code[ip + 2];
 		let uninitialized = stack[index];
 		if (uninitialized !== null) {
@@ -741,15 +789,30 @@ function ml_frame_run(result) {
 		ip += 3;
 		break;
 	}
-	case 29: //MLI_LETX,
+	case 29: {//MLI_LETX,
+		let packed = ml_deref(result);
+		let index = stack.length + code[ip + 2];
+		let count = code[ip + 3];
+		for (var i = 0; i < count; ++i) {
+			result = ml_unpack(packed, i + 1);
+			result = ml_deref(result);
+			let uninitialized = stack[index + i];
+			stack[index + i] = result;
+			if (uninitialized !== null) {
+				ml_uninitialized_set(uninitialized, result);
+			}
+		}
+		ip += 4;
+		break;
+	}
 	case 30: //MLI_REF,
 	case 31: //MLI_REFI,
 	case 32: //MLI_REFX,
 	case 33: //MLI_FOR,
-		result = result.deref();
-		this.line = code[ip + 1];
-		this.ip = ip + 2;
-		return ml_iterate(this, result);
+		result = ml_deref(result);
+		self.line = code[ip + 1];
+		self.ip = ip + 2;
+		return ml_iterate(self, result);
 	case 34: //MLI_ITER,
 		if (result === MLNil) {
 			ip = code[ip + 2];
@@ -760,30 +823,30 @@ function ml_frame_run(result) {
 		break;
 	case 35: //MLI_NEXT,
 		result = stack.pop();
-		this.line = code[ip + 1];
-		this.ip = code[ip + 2];
-		return ml_iter_next(this, result);
+		self.line = code[ip + 1];
+		self.ip = code[ip + 2];
+		return ml_iter_next(self, result);
 	case 36: //MLI_VALUE,
 		result = stack[stack.length + code[ip + 2]];
-		this.line = code[ip + 1];
-		this.ip = ip + 3;
-		return ml_iter_value(this, result);
+		self.line = code[ip + 1];
+		self.ip = ip + 3;
+		return ml_iter_value(self, result);
 	case 37: //MLI_KEY,
 		result = stack[stack.length + code[ip + 2]];
-		this.line = code[ip + 1];
-		this.ip = ip + 3;
-		return ml_iter_key(this, result);
+		self.line = code[ip + 1];
+		self.ip = ip + 3;
+		return ml_iter_key(self, result);
 	case 38: {//MLI_CALL,
 		let count = code[ip + 2];
 		let args = stack.splice(stack.length - count, count);
-		let func = stack.pop();
+		let func = ml_deref(stack.pop());
 		let next = ip + 3;
 		if (code[next] === 1) { // MLI_RETURN
-			return ml_call(this.caller, func, args);
+			return ml_call(self.caller, func, args);
 		} else {
-			this.ip = next;
-			this.line = code[ip + 1];
-			return ml_call(this, func, args);
+			self.ip = next;
+			self.line = code[ip + 1];
+			return ml_call(self, func, args);
 		}
 	}
 	case 39: {//MLI_CONST_CALL,
@@ -792,18 +855,18 @@ function ml_frame_run(result) {
 		let func = code[ip + 3];
 		let next = ip + 4;
 		if (code[next] === 1) { // MLI_RETURN
-			return ml_call(this.caller, func, args);
+			return ml_call(self.caller, func, args);
 		} else {
-			this.ip = next;
-			this.line = code[ip + 1];
-			return ml_call(this, func, args);
+			self.ip = next;
+			self.line = code[ip + 1];
+			return ml_call(self, func, args);
 		}
 	}
 	case 40: //MLI_ASSIGN,
-		result = result.deref();
-		result = stack.pop().assign(result);
+		result = ml_deref(result);
+		result = ml_assign(stack.pop(), result);
 		if (result.type === MLErrorT) {
-			ip = this.ep;
+			ip = self.ep;
 		} else {
 			ip += 2;
 		}
@@ -817,7 +880,7 @@ function ml_frame_run(result) {
 		ip += 3;
 		break;
 	case 43: //MLI_UPVALUE,
-		result = this.upvalues[code[ip + 2]];
+		result = self.upvalues[code[ip + 2]];
 		ip += 3;
 		break;
 	case 44: {//MLI_LOCALX,
@@ -842,7 +905,7 @@ function ml_frame_run(result) {
 		ip += 2;
 		break;
 	case 48: //MLI_LIST_APPEND,
-		stack[stack.length - 1].push(result.deref());
+		stack[stack.length - 1].push(ml_deref(result));
 		ip += 2;
 		break;
 	case 49: //MLI_MAP_NEW,
@@ -851,7 +914,7 @@ function ml_frame_run(result) {
 		break;
 	case 50: {//MLI_MAP_INSERT,
 		let key = stack.pop();
-		ml_map_insert(stack[stack.length - 1], key, result.deref());
+		ml_map_insert(stack[stack.length - 1], key, ml_deref(result));
 		ip += 2;
 		break;
 	}
@@ -863,9 +926,9 @@ function ml_frame_run(result) {
 			let index = code[ip + 3 + i];
 			var value;
 			if (index < 0) {
-				value = this.upvalues[~index];
+				value = self.upvalues[~index];
 				if (value === null) {
-					value = this.upvalues[~index] = ml_uninitialized("<upvalue>");
+					value = self.upvalues[~index] = ml_uninitialized("<upvalue>");
 				}
 			} else {
 				value = stack[index];
@@ -884,12 +947,12 @@ function ml_frame_run(result) {
 		ip += 4;
 		break;
 	case 54: //MLI_PARTIAL_NEW,
-		result = result.deref();
+		result = ml_deref(result);
 		stack.push(ml_partial_function(result, code[ip + 2]));
 		ip += 3;
 		break;
 	case 55: //MLI_PARTIAL_SET,
-		result = result.deref();
+		result = ml_deref(result);
 		ml_partial_function_set(stack[stack.length - 1], code[ip + 2], result);
 		ip += 3;
 		break;
@@ -901,12 +964,12 @@ function ml_frame_run(result) {
 		let count = code[ip + 2] + 1;
 		let args = stack.splice(stack.length - count, count);
 		stack.push(args[0]);
-		this.line = code[ip + 1];
-		this.ip = ip + 3;
-		return ml_call(this, appendMethod, args);
+		self.line = code[ip + 1];
+		self.ip = ip + 3;
+		return ml_call(self, appendMethod, args);
 	}
 	case 58: //MLI_STRING_ADDS,
-		stack[stack.length - 1].add(code[ip + 2]);
+		stack[stack.length - 1].string += code[ip + 2];
 		ip += 3;
 		break;
 	case 59: //MLI_STRING_END,
@@ -914,35 +977,47 @@ function ml_frame_run(result) {
 		ip += 2;
 		break;
 	case 60: //MLI_RESOLVE,
-		break;
+		self.line = code[ip + 1];
+		self.ip = ip + 3;
+		return ml_call(self, symbolMethod, [result, code[ip + 2]]);
 	case 61: //MLI_IF_DEBUG
+		ip += 3;
 		break;
 	}
 }
+export function ml_closure(info, upvalues) {
+	return ml_value(MLClosureT, {info, upvalues});
+}
 
-Globals.print = function(caller, args) {
+const MLModuleT = ml_type("module");
+export function ml_module(name, exports) {
+	exports = exports || {};
+	return ml_value(MLModuleT, {name, exports});
+}
+
+Globals.print = function(caller, _, args) {
 	if (args.length === 0) return ml_resume(caller, MLNil);
 	let buffer = ml_stringbuffer();
 	let state = {caller, index: 1, run: function(value) {
-		if (value.type === MLErrorT) return ml_resume(this.caller, value);
-		if (this.index === args.length) {
+		if (value.type === MLErrorT) return ml_resume(self.caller, value);
+		if (self.index === args.length) {
 			console.log(value.string);
-			return ml_resume(this.caller, MLNil);
+			return ml_resume(self.caller, MLNil);
 		}
-		ml_call(this, appendMethod, [value, args[this.index++]]);
+		ml_call(self, appendMethod, [value, args[self.index++]]);
 	}};
 	ml_call(state, appendMethod, [buffer, args[0]]);
 }
 
-Globals.count = function(caller, args) {
+Globals.count = function(caller, _, args) {
 	let state = {caller, count: 0, run: function(value) {
 		if (value.type === MLErrorT) {
-			ml_resume(this.caller, value);
+			ml_resume(self.caller, value);
 		} else if (value === MLNil) {
-			ml_resume(this.caller, this.count);
+			ml_resume(self.caller, self.count);
 		} else {
-			this.count++;
-			ml_iter_next(this, value);
+			self.count++;
+			ml_iter_next(self, value);
 		}
 	}};
 	ml_iterate(state, args[0]);
@@ -1010,7 +1085,7 @@ ml_method_define("=>?", [MLChainedFunctionT, MLFunctionT], false, function(calle
 	ml_resume(caller, ml_chained(entries));
 });
 
-ml_method_define(MLBooleanT.of, [MLBooleanT], false, ml_identity);
+ml_method_define(MLBooleanT, [MLBooleanT], false, ml_identity);
 ml_method_define("-", [MLBooleanT], false, function(caller, args) {
 	ml_resume(caller, !args[0]);
 });
@@ -1021,8 +1096,8 @@ ml_method_define("\\/", [MLBooleanT, MLBooleanT], false, function(caller, args) 
 	ml_resume(caller, args[0] || args[1]);
 });
 
-ml_method_define(MLNumberT.of, [MLNumberT], false, ml_identity);
-ml_method_define(MLNumberT.of, [MLStringT], false, function(caller, args) {
+ml_method_define(MLNumberT, [MLNumberT], false, ml_identity);
+ml_method_define(MLNumberT, [MLStringT], false, function(caller, args) {
 	ml_resume(caller, parseFloat(args[0]));
 });
 
@@ -1081,28 +1156,28 @@ ml_method_define("append", [MLStringBufferT, MLNumberT, MLNumberT], false, funct
 	ml_resume(caller, args[0]);
 });
 
-ml_method_define(MLStringT.of, [MLStringT], false, ml_identity);
-ml_method_define(MLStringT.of, [MLAnyT], false, function(caller, args) {
+ml_method_define(MLStringT, [MLStringT], false, ml_identity);
+ml_method_define(MLStringT, [MLAnyT], false, function(caller, args) {
 	let buffer = ml_stringbuffer();
-	let state = {caller, run: function(value) {
-		if (value.type === MLErrorT) return ml_resume(this.caller, value);
-		ml_resume(this.caller, value.string);
+	let state = {caller, run: function(self, value) {
+		if (value.type === MLErrorT) return ml_resume(self.caller, value);
+		ml_resume(self.caller, value.string);
 	}};
 	ml_call(state, appendMethod, [buffer, args[0]]);
 });
-ml_method_define(MLStringT.of, [MLNilT], false, function(caller, args) {
+ml_method_define(MLStringT, [MLNilT], false, function(caller, _) {
 	ml_resume(caller, "nil");
 });
-ml_method_define(MLStringT.of, [MLSomeT], false, function(caller, args) {
+ml_method_define(MLStringT, [MLSomeT], false, function(caller, _) {
 	ml_resume(caller, "some");
 });
-ml_method_define(MLStringT.of, [MLBooleanT], false, function(caller, args) {
+ml_method_define(MLStringT, [MLBooleanT], false, function(caller, args) {
 	ml_resume(caller, args[0] ? "true" : "false");
 });
-ml_method_define(MLStringT.of, [MLNumberT], false, function(caller, args) {
+ml_method_define(MLStringT, [MLNumberT], false, function(caller, args) {
 	ml_resume(caller, args[0].toString());
 });
-ml_method_define(MLStringT.of, [MLNumberT, MLNumberT], false, function(caller, args) {
+ml_method_define(MLStringT, [MLNumberT, MLNumberT], false, function(caller, args) {
 	let base = args[1];
 	if (base < 2 || base > 36 || base !== Math.floor(base)) {
 		return ml_resume(caller, ml_error("RangeError", "Invalid base"));
@@ -1173,29 +1248,29 @@ ml_method_define("append", [MLStringBufferT, MLStringT], false, function(caller,
 	ml_resume(caller, args[0]);
 });
 
-ml_method_define(MLListT.of, [MLIteratableT], true, function(caller, args) {
+ml_method_define(MLListT, [MLIteratableT], true, function(caller, args) {
 	let list = [];
 	let state = {caller, list, run: iter_next};
 	ml_iterate(state, args[0]);
-	function iter_next(value) {
+	function iter_next(self, value) {
 		if (value.type === MLErrorT) {
-			ml_resume(this.caller, value);
+			ml_resume(self.caller, value);
 		} else if (value === MLNil) {
-			ml_resume(this.caller, this.list);
+			ml_resume(self.caller, self.list);
 		} else {
-			this.iter = value;
-			this.run = iter_value;
-			ml_iter_value(this, value);
+			self.iter = value;
+			self.run = iter_value;
+			ml_iter_value(self, value);
 		}
 	}
-	function iter_value(value) {
-		value = value.deref();
+	function iter_value(self, value) {
+		value = ml_deref(value);
 		if (value.type === MLErrorT) {
-			ml_resume(this.caller, value);
+			ml_resume(self.caller, value);
 		} else {
-			this.list.push(value);
-			this.run = iter_next;
-			ml_iter_next(this, this.iter);
+			self.list.push(value);
+			self.run = iter_next;
+			ml_iter_next(self, self.iter);
 		}
 	}
 });
@@ -1234,54 +1309,54 @@ ml_method_define("append", [MLStringBufferT, MLListT], false, function(caller, a
 	let buffer = args[0];
 	let list = args[1];
 	if (!list.length) return ml_resume(caller, "[]");
-	let state = {caller, list, index: 1, run: function(value) {
-		if (value.type === MLErrorT) return ml_resume(this.caller, value);
-		let list = this.list;
-		if (this.index == list.length) {
+	let state = {caller, list, index: 1, run: function(self, value) {
+		if (value.type === MLErrorT) return ml_resume(self.caller, value);
+		let list = self.list;
+		if (self.index == list.length) {
 			value.string += "]";
-			ml_resume(this.caller, value);
+			ml_resume(self.caller, value);
 		} else {
 			value.string += ", ";
-			ml_call(state, appendMethod, [value, list[this.index++]]);
+			ml_call(state, appendMethod, [value, list[self.index++]]);
 		}
 	}};
 	buffer.string += "[";
 	ml_call(state, appendMethod, [buffer, list[0]]);
 });
 
-ml_method_define(MLMapT.of, [MLIteratableT], true, function(caller, args) {
+ml_method_define(MLMapT, [MLIteratableT], true, function(caller, args) {
 	let map = ml_map();
 	let state = {caller, map, run: iter_next};
 	ml_iterate(state, args[0]);
-	function iter_next(value) {
+	function iter_next(self, value) {
 		if (value.type === MLErrorT) {
-			ml_resume(this.caller, value);
+			ml_resume(self.caller, value);
 		} else if (value === MLNil) {
-			ml_resume(this.caller, this.map);
+			ml_resume(self.caller, self.map);
 		} else {
-			this.iter = value;
-			this.run = iter_key;
-			ml_iter_key(this, value);
+			self.iter = value;
+			self.run = iter_key;
+			ml_iter_key(self, value);
 		}
 	}
-	function iter_key(value) {
-		value = value.deref();
+	function iter_key(self, value) {
+		value = ml_deref(value);
 		if (value.type === MLErrorT) {
-			ml_resume(this.caller, value);
+			ml_resume(self.caller, value);
 		} else {
-			this.key = value;
-			this.run = iter_value;
-			ml_iter_value(this, this.iter);
+			self.key = value;
+			self.run = iter_value;
+			ml_iter_value(self, self.iter);
 		}
 	}
-	function iter_value(value) {
-		value = value.deref();
+	function iter_value(self, value) {
+		value = ml_deref(value);
 		if (value.type === MLErrorT) {
-			ml_resume(this.caller, value);
+			ml_resume(self.caller, value);
 		} else {
-			ml_map_insert(this.map, this.key, value);
-			this.run = iter_next;
-			ml_iter_next(this, this.iter);
+			ml_map_insert(self.map, self.key, value);
+			self.run = iter_next;
+			ml_iter_next(self, self.iter);
 		}
 	}
 });
@@ -1302,20 +1377,20 @@ ml_method_define("append", [MLStringBufferT, MLMapT], false, function(caller, ar
 	let buffer = args[0];
 	let node = args[1].head;
 	if (!node) return ml_resume(caller, "{}");
-	let state = {caller, node, key: true, run: function(value) {
-		if (value.type === MLErrorT) return ml_resume(this.caller, value);
-		if (this.key) {
+	let state = {caller, node, key: true, run: function(self, value) {
+		if (value.type === MLErrorT) return ml_resume(self.caller, value);
+		if (self.key) {
 			value.string += " is ";
-			this.key = false;
-			ml_call(state, appendMethod, [value, this.node.value]);
+			self.key = false;
+			ml_call(state, appendMethod, [value, self.node.value]);
 		} else {
-			let node = this.node.next;
+			let node = self.node.next;
 			if (!node) {
 				value.string += "}";
-				return ml_resume(this.caller, value);
+				return ml_resume(self.caller, value);
 			}
-			this.key = true;
-			this.node = node;
+			self.key = true;
+			self.node = node;
 			value.string += ", ";
 			ml_call(state, appendMethod, [value, node.key]);
 		}
@@ -1324,7 +1399,23 @@ ml_method_define("append", [MLStringBufferT, MLMapT], false, function(caller, ar
 	ml_call(state, appendMethod, [buffer, node.key]);
 });
 
-function ml_decode(value, cache) {
+ml_method_define("::", [MLModuleT, MLStringT], false, function(caller, args) {
+	let value = args[0].exports[args[1]];
+	if (value === undefined) {
+		ml_resume(caller, ml_error("NameError", `${args[1]} not exported from ${args[0].name}`));
+	} else {
+		ml_resume(caller, value);
+	}
+});
+
+ml_method_define("type", [MLErrorValueT], false, function(caller, args) {
+	ml_resume(caller, args[0].short);
+});
+ml_method_define("message", [MLErrorValueT], false, function(caller, args) {
+	ml_resume(caller, args[0].message);
+});
+
+export function ml_decode(value, cache) {
 	switch (typeof(value)) {
 	case 'boolean': return value;
 	case 'number': return value;
