@@ -485,7 +485,7 @@ export const MLMapT = ml_type("map", [MLIteratableT], {
 	}
 });
 MLMapT.prototype.forEach = function(callback) {
-	for (var node = self.head; node; node = node.next) {
+	for (var node = this.head; node; node = node.next) {
 		callback(node.key, node.value);
 	}
 }
