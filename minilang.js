@@ -407,7 +407,7 @@ export function ml_chained(entries) {
 	return ml_value(MLChainedFunctionT, {entries});
 }
 
-const MLTupleT = ml_type("tuple", [], {
+export const MLTupleT = ml_type("tuple", [], {
 	unpack: function(self, index) {
 		if (index > self.values.length) return MLNil;
 		return self.values[index - 1];
