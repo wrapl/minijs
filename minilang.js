@@ -578,7 +578,7 @@ function ml_uninitialized_set(uninitialized, value) {
 	}
 }
 
-const MLStringBufferT = ml_type("stringbuffer");
+export const MLStringBufferT = ml_type("stringbuffer");
 export function ml_stringbuffer() {
 	return ml_value(MLStringBufferT, {string: ""});
 }
@@ -594,7 +594,7 @@ function ml_global(value) {
 
 const MLFrameT = ml_type("frame", [MLFunctionT]);
 
-const MLClosureT = ml_type("closure", [MLFunctionT], {
+export const MLClosureT = ml_type("closure", [MLFunctionT], {
 	call: function(caller, self, args) {
 		let info = self.info;
 		let stack = [];
@@ -989,7 +989,7 @@ export function ml_closure(info, upvalues) {
 	return ml_value(MLClosureT, {info, upvalues});
 }
 
-const MLModuleT = ml_type("module");
+export const MLModuleT = ml_type("module");
 export function ml_module(name, exports) {
 	exports = exports || {};
 	return ml_value(MLModuleT, {name, exports});
