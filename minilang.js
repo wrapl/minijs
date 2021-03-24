@@ -132,8 +132,8 @@ export const MLSomeT = ml_type("some");
 export const MLSome = ml_value(MLSomeT);
 
 export const MLErrorT = ml_type("error");
-export function ml_error(short, message) {
-	return ml_value(MLErrorT, {short, message, stack: []});
+export function ml_error(type, message) {
+	return ml_value(MLErrorT, {type, message, stack: []});
 }
 export function ml_error_trace_add(error, source, line) {
 	error.stack.push([source, line]);
@@ -141,10 +141,10 @@ export function ml_error_trace_add(error, source, line) {
 
 export const MLErrorValueT = ml_type("error-value");
 export function ml_error_value(error) {
-	let short = error.short;
+	let type = error.type;
 	let message = error.message;
 	let stack = error.stack;
-	return ml_value(MLErrorValueT, {short, message, stack});
+	return ml_value(MLErrorValueT, {type, message, stack});
 }
 
 export const MLMethodT = ml_type("method", [MLFunctionT], {
@@ -1537,7 +1537,7 @@ ml_method_define("::", [MLModuleT, MLStringT], false, function(caller, args) {
 });
 
 ml_method_define("type", [MLErrorValueT], false, function(caller, args) {
-	ml_resume(caller, args[0].short);
+	ml_resume(caller, args[0].type);
 });
 ml_method_define("message", [MLErrorValueT], false, function(caller, args) {
 	ml_resume(caller, args[0].message);
