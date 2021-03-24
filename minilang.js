@@ -37,7 +37,7 @@ export function ml_assign(self, value) {
 }
 
 export function ml_call(caller, self, args) {
-	ml_exec(self.ml_type.call, caller || EndState, self, args);
+	ml_exec(self.ml_type.ml_call, caller || EndState, self, args);
 }
 
 export function ml_iterate(caller, self) {
@@ -64,7 +64,7 @@ const DefaultMethods = {
 	ml_hash: function(self) { return self.toString(); },
 	ml_deref: function(self) { return self; },
 	ml_assign: function(self, _) { return ml_error("TypeError", `<${self.ml_type.name}> is not assignable`); },
-	call: function(caller, self, args) {
+	ml_call: function(caller, self, args) {
 		ml_call(caller, callMethod, [self].concat(args));
 	}
 };
@@ -76,7 +76,7 @@ export const MLTypeT = {
 	ml_hash: function(self) { return `<${self.ml_type.name}>`; },
 	ml_deref: DefaultMethods.ml_deref,
 	ml_assign: DefaultMethods.ml_assign,
-	call: function(caller, self, args) {
+	ml_call: function(caller, self, args) {
 		ml_call(caller, self.of, args);
 	},
 	of: function(caller, args) {
@@ -85,33 +85,33 @@ export const MLTypeT = {
 };
 MLTypeT.ml_type = MLTypeT;
 Object.defineProperty(MLTypeT.prototype, "ml_type", {value: MLTypeT});
-Globals.ml_type = MLTypeT;
+Globals.type = MLTypeT;
 
 export function ml_type(name, parents, methods) {
 	parents = parents || [];
 	if (name !== 'any') parents.push(MLAnyT);
-	const ml_type = Object.assign(Object.create(MLTypeT.prototype), DefaultMethods, methods);
-	ml_type.name = name;
-	ml_type.parents = parents;
+	const type = Object.assign(Object.create(MLTypeT.prototype), DefaultMethods, methods);
+	type.name = name;
+	type.parents = parents;
 	var rank = 0;
 	for (var i = 0; i < parents.length; ++i) {
 		rank = Math.max(rank, parents[i].rank);
 	}
-	ml_type.rank = rank + 1;
-	ml_type.parents.unshift(ml_type);
-	ml_type.prototype = {ml_type};
-	Globals[name] = ml_type;
-	return ml_type;
+	type.rank = rank + 1;
+	type.parents.unshift(type);
+	type.prototype = {ml_type: type};
+	Globals[name] = type;
+	return type;
 }
 
-export function ml_value(ml_type, fields) {
-	return Object.assign(Object.create(ml_type.prototype), fields);
+export function ml_value(type, fields) {
+	return Object.assign(Object.create(type.prototype), fields);
 }
 
-export function ml_is(value, ml_type) {
-	if (value.ml_type === ml_type) return true;
-	if (value.ml_type.parents.indexOf(ml_type) > -1) return true;
-	if (ml_type === MLAnyT) return true;
+export function ml_is(value, type) {
+	if (value.ml_type === type) return true;
+	if (value.ml_type.parents.indexOf(type) > -1) return true;
+	if (type === MLAnyT) return true;
 	return false;
 }
 
@@ -149,7 +149,7 @@ export function ml_error_value(error) {
 
 export const MLMethodT = ml_type("method", [MLFunctionT], {
 	ml_hash: function(self) { return ":" + self.name; },
-	call: function(caller, self, args) {
+	ml_call: function(caller, self, args) {
 		var signature = "";
 		for (var i = 0; i < args.length; ++i) {
 			args[i] = ml_deref(args[i]);
@@ -183,9 +183,9 @@ export const MLMethodT = ml_type("method", [MLFunctionT], {
 		function score_definition(types, args) {
 			var score = 0;
 			for (var i = 0; i < types.length; ++i) {
-				let ml_type = types[i];
-				if (args[i].ml_type.parents.indexOf(ml_type) === -1) return -1;
-				score += ml_type.rank;
+				let type = types[i];
+				if (args[i].ml_type.parents.indexOf(type) === -1) return -1;
+				score += type.rank;
 			}
 			return score;
 		}
@@ -204,10 +204,10 @@ export function ml_method_define(method, types, variadic, func) {
 	if (typeof(method) === 'string') {
 		method = ml_method(method);
 	} else if (method.ml_type === MLTypeT) {
-		let ml_type = method;
+		let type = method;
 		method = ml_type.of;
 		if (method === undefined) {
-			method = ml_type.of = ml_method(ml_type.name + "::of");
+			method = type.of = ml_method(type.name + "::of");
 		}
 	}
 	let count = types.length;
@@ -223,7 +223,7 @@ export const MLBooleanT = ml_type("boolean");
 Object.defineProperty(Boolean.prototype, "ml_type", {value: MLBooleanT});
 
 export const MLNumberT = ml_type("number", [MLFunctionT], {
-	call: function(caller, self, args) {
+	ml_call: function(caller, self, args) {
 		var index = self - 1;
 		if (index < 0) index += args.length + 1;
 		if (index < 0) {	
@@ -264,7 +264,7 @@ export const MLStringT = ml_type("string", [MLIteratableT]);
 Object.defineProperty(String.prototype, "ml_type", {value: MLStringT});
 
 const MLJSFunctionT = ml_type("function", [MLFunctionT], {
-	call: function(caller, self, args) {
+	ml_call: function(caller, self, args) {
 		for (var i = 0; i < args.length; ++i) args[i] = ml_deref(args[i]);
 		self(caller, args);
 	}
@@ -275,7 +275,7 @@ export const MLJSObjectT = ml_type("object");
 Object.defineProperty(Object.prototype, "ml_type", {value: MLJSObjectT});
 
 const MLPartialFunctionT = ml_type("partial-function", [MLFunctionT], {
-	call: function(caller, self, args) {
+	ml_call: function(caller, self, args) {
 		let count = args.length;
 		var combinedCount = count + self.set;
 		if (combinedCount < self.count) combinedCount = self.count;
@@ -310,7 +310,7 @@ const filterSoloMethod = ml_method("->?");
 const filterDuoMethod = ml_method("=>?");
 
 const MLChainedFunctionT = ml_type("chained-function", [MLFunctionT, MLIteratableT], {
-	call: function(caller, self, args) {},
+	ml_call: function(caller, self, args) {},
 	iterate: function(caller, self) {
 		let state = ml_value(MLChainedStateT, {
 			caller,
@@ -592,7 +592,7 @@ export function ml_stringbuffer() {
 }
 
 const MLGlobalT = ml_type("global", [], {
-	call: function(caller, self, args) {
+	ml_call: function(caller, self, args) {
 		ml_call(caller, self.value, args);
 	}
 });
@@ -603,7 +603,7 @@ function ml_global(value) {
 const MLFrameT = ml_type("frame", [MLFunctionT]);
 
 export const MLClosureT = ml_type("closure", [MLFunctionT], {
-	call: function(caller, self, args) {
+	ml_call: function(caller, self, args) {
 		let info = self.info;
 		let stack = [];
 		let frame = ml_value(MLFrameT, {
