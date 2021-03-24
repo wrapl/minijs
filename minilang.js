@@ -600,9 +600,25 @@ function ml_global(value) {
 	return ml_value(MLGlobalT, {value});
 }
 
-const MLFrameT = ml_type("frame", [MLFunctionT]);
+const MLFrameT = ml_type("frame", [MLFunctionT], {
+	iter_next: function(caller, self) {
+		if (!self.suspend) return ml_resume(caller, MLNil);
+		self.caller = caller;
+		ml_resume(self, MLNil);
+	},
+	iter_key: function(caller, self) {
+		if (!self.suspend) return ml_resume(caller, ml_error("StateError", "Function did not suspend"));
+		let stack = self.stack;
+		ml_resume(caller, stack[stack.length - 2]);
+	},
+	iter_value: function(caller, self) {
+		if (!self.suspend) return ml_resume(caller, ml_error("StateError", "Function did not suspend"));
+		let stack = self.stack;
+		ml_resume(caller, stack[stack.length - 1]);
+	}
+});
 
-export const MLClosureT = ml_type("closure", [MLFunctionT], {
+export const MLClosureT = ml_type("closure", [MLFunctionT, MLIteratableT], {
 	ml_call: function(caller, self, args) {
 		let info = self.info;
 		let stack = [];
@@ -678,6 +694,9 @@ export const MLClosureT = ml_type("closure", [MLFunctionT], {
 			}
 		}
 		ml_resume(frame, MLNil);
+	},
+	iterate: function(caller, self) {
+		MLClosureT.ml_call(caller, self, []);
 	}
 });
 function ml_frame_run(self, result) {
@@ -692,9 +711,12 @@ function ml_frame_run(self, result) {
 	case 1: //MLI_RETURN,
 		return ml_resume(self.caller, result);
 	case 2: //MLI_SUSPEND,
+		self.suspend = true;
+		self.ip = ip + 2;
 		self.line = code[ip + 1];
 		return ml_resume(self.	caller, self);
 	case 3: //MLI_RESUME,
+		delete self.suspend;
 		stack.pop();
 		stack.pop();
 		ip += 2;
