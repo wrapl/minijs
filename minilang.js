@@ -84,7 +84,7 @@ export const MLTypeT = {
 	}
 };
 MLTypeT.ml_type = MLTypeT;
-MLTypeT.prototype.ml_type = MLTypeT;
+Object.defineProperty(MLTypeT.prototype, "ml_type", {value: MLTypeT});
 Globals.ml_type = MLTypeT;
 
 export function ml_type(name, parents, methods) {
@@ -220,7 +220,7 @@ let callMethod = ml_method("()");
 let symbolMethod = ml_method("::");
 
 export const MLBooleanT = ml_type("boolean");
-Boolean.prototype.ml_type = MLBooleanT;
+Object.defineProperty(Boolean.prototype, "ml_type", {value: MLBooleanT});
 
 export const MLNumberT = ml_type("number", [MLFunctionT], {
 	call: function(caller, self, args) {
@@ -235,7 +235,7 @@ export const MLNumberT = ml_type("number", [MLFunctionT], {
 		}
 	}
 });
-Number.prototype.ml_type = MLNumberT;
+Object.defineProperty(Number.prototype, "ml_type", {value: MLNumberT});
 
 const MLRangeIterT = ml_type("range-iter", [], {
 	iter_next: function(caller, self) {
@@ -261,7 +261,7 @@ export const MLRangeT = ml_type("range", [MLIteratableT], {
 });
 
 export const MLStringT = ml_type("string", [MLIteratableT]);
-String.prototype.ml_type = MLStringT;
+Object.defineProperty(String.prototype, "ml_type", {value: MLStringT});
 
 const MLJSFunctionT = ml_type("function", [MLFunctionT], {
 	call: function(caller, self, args) {
@@ -269,10 +269,10 @@ const MLJSFunctionT = ml_type("function", [MLFunctionT], {
 		self(caller, args);
 	}
 });
-Function.prototype.ml_type = MLJSFunctionT;
+Object.defineProperty(Function.prototype, "ml_type", {value: MLJSFunctionT});
 
 export const MLJSObjectT = ml_type("object");
-Object.prototype.ml_type = MLJSObjectT;
+Object.defineProperty(Object.prototype, "ml_type", {value: MLJSObjectT});
 
 const MLPartialFunctionT = ml_type("partial-function", [MLFunctionT], {
 	call: function(caller, self, args) {
@@ -448,7 +448,7 @@ export const MLListT = ml_type("list", [MLIteratableT], {
 		return self[index - 1];
 	}
 });
-Array.prototype.ml_type = MLListT;
+Object.defineProperty(Array.prototype, "ml_type", {value: MLListT});
 export function ml_list() {
 	return [];
 }
