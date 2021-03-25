@@ -766,7 +766,7 @@ function ml_frame_run(self, result) {
 	case 12: { //MLI_WITH_VAR,
 		let variable = ml_value(MLVariableT, {value: result});
 		stack.push(variable);
-		ip += 3;
+		ip += 2;
 		break;
 	}
 	case 13: { //MLI_WITHX,
@@ -1341,6 +1341,10 @@ ml_method_define("upper", [MLStringT], false, function(caller, args) {
 });
 ml_method_define("lower", [MLStringT], false, function(caller, args) {
 	ml_resume(caller, args[0].toLowerCase());
+});
+ml_method_define("find", [MLStringT, MLStringT], false, function(caller, args) {
+	let index = args[0].indexOf(args[1]);
+	ml_resume(caller, index < 0 ? MLNil : index + 1);
 });
 ml_method_define("append", [MLStringBufferT, MLStringT], false, function(caller, args) {
 	args[0].string += args[1];
