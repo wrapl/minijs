@@ -13,7 +13,7 @@ export function ml_exec() {
 		mlRunning = true;
 		while (Trampolines.length) {
 			let trampoline = Trampolines.shift();
-			let func = trampoline.shift()
+			let func = trampoline.shift();
 			func.apply(null, trampoline);
 		}
 		mlRunning = false;
@@ -315,36 +315,7 @@ const MLChainedFunctionT = ml_type("chained-function", [MLFunctionT, MLIteratabl
 		let state = ml_value(MLChainedStateT, {
 			caller,
 			run: ml_chained_iterator_next,
-			entries: self.entries,
-			next: function(value) {
-				self.value = value;
-				let func = self.entries[self.index++];
-				if (func === undefined) return ml_resume(self.caller, self);
-				if (func === soloMethod) {
-					func = self.entries[self.index++];
-					if (func === undefined) return ml_resume(self.caller, ml_error("StateError", "Missing value function for chain"));
-					self.run = ml_chained_iterator_value;
-					ml_call(self, func, [value]);
-				} else if (func === duoMethod) {
-					func = self.entries[self.index++];
-					if (func === undefined) return ml_resume(self.caller, ml_error("StateError", "Missing value function for chain"));
-					self.run = ml_chained_iterator_duo_key;
-					ml_call(self, func, [self.key, value]);
-				} else if (func === filterSoloMethod) {
-					func = self.entries[self.index++];
-					if (func === undefined) return ml_resume(self.caller, ml_error("StateError", "Missing value function for chain"));
-					self.run = ml_chained_iterator_filter;
-					ml_call(self, func, [value]);
-				} else if (func === filterDuoMethod) {
-					func = self.entries[self.index++];
-					if (func === undefined) return ml_resume(self.caller, ml_error("StateError", "Missing value function for chain"));
-					self.run = ml_chained_iterator_filter;
-					ml_call(self, func, [self.key, value]);
-				} else {
-					self.run = ml_chained_iterator_value;
-					ml_call(self, func, [value]);
-				}
-			}
+			entries: self.entries
 		});
 		ml_iterate(state, self.entries[0]);
 	}
@@ -362,6 +333,35 @@ const MLChainedStateT = ml_type("chained-state", [], {
 		ml_resume(caller, self.value);
 	}
 });
+function ml_chained_iterator_continue(self, value) {
+	self.value = value;
+	let func = self.entries[self.index++];
+	if (func === undefined) return ml_resume(self.caller, self);
+	if (func === soloMethod) {
+		func = self.entries[self.index++];
+		if (func === undefined) return ml_resume(self.caller, ml_error("StateError", "Missing value function for chain"));
+		self.run = ml_chained_iterator_value;
+		ml_call(self, func, [value]);
+	} else if (func === duoMethod) {
+		func = self.entries[self.index++];
+		if (func === undefined) return ml_resume(self.caller, ml_error("StateError", "Missing value function for chain"));
+		self.run = ml_chained_iterator_duo_key;
+		ml_call(self, func, [self.key, value]);
+	} else if (func === filterSoloMethod) {
+		func = self.entries[self.index++];
+		if (func === undefined) return ml_resume(self.caller, ml_error("StateError", "Missing value function for chain"));
+		self.run = ml_chained_iterator_filter;
+		ml_call(self, func, [value]);
+	} else if (func === filterDuoMethod) {
+		func = self.entries[self.index++];
+		if (func === undefined) return ml_resume(self.caller, ml_error("StateError", "Missing value function for chain"));
+		self.run = ml_chained_iterator_filter;
+		ml_call(self, func, [self.key, value]);
+	} else {
+		self.run = ml_chained_iterator_value;
+		ml_call(self, func, [value]);
+	}
+}
 function ml_chained_iterator_next(self, value) {
 	if (value.ml_type === MLErrorT) return ml_resume(self.caller, value);
 	if (value === MLNil) return ml_resume(self.caller, value);
@@ -383,7 +383,7 @@ function ml_chained_iterator_filter(self, value) {
 		self.run = ml_chained_iterator_next;
 		ml_iter_next(self, self.iter);
 	} else {
-		self.next(value);
+		ml_chained_iterator_continue(self, value);
 	}
 }
 function ml_chained_iterator_duo_key(self, value) {
@@ -399,7 +399,7 @@ function ml_chained_iterator_duo_key(self, value) {
 function ml_chained_iterator_value(self, value) {
 	value = ml_deref(value);
 	if (value.ml_type === MLErrorT) return ml_resume(self.caller, value);
-	self.next(value);
+	ml_chained_iterator_continue(self, value);
 }
 export function ml_chained(entries) {
 	if (entries.length === 1) return entries[0];
@@ -1354,7 +1354,7 @@ ml_method_define("append", [MLStringBufferT, MLStringT], false, function(caller,
 ml_method_define(MLListT, [MLIteratableT], true, function(caller, args) {
 	let list = [];
 	let state = {caller, list, run: iter_next};
-	ml_iterate(state, args[0]);
+	ml_iterate(state, ml_chained(args));
 	function iter_next(self, value) {
 		if (value.ml_type === MLErrorT) {
 			ml_resume(self.caller, value);
@@ -1433,7 +1433,7 @@ ml_method_define("append", [MLStringBufferT, MLListT], false, function(caller, a
 ml_method_define(MLMapT, [MLIteratableT], true, function(caller, args) {
 	let map = ml_map();
 	let state = {caller, map, run: iter_next};
-	ml_iterate(state, args[0]);
+	ml_iterate(state, ml_chained(args));
 	function iter_next(self, value) {
 		if (value.ml_type === MLErrorT) {
 			ml_resume(self.caller, value);
