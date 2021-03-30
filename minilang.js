@@ -263,6 +263,9 @@ export const MLRangeT = ml_type("range", [MLIteratableT], {
 export const MLStringT = ml_type("string", [MLIteratableT]);
 Object.defineProperty(String.prototype, "ml_type", {value: MLStringT});
 
+export const MLRegexT = ml_type("regex", []);
+Object.defineProperty(RegExp.prototype, "ml_type", {value: MLRegexT});
+
 const MLJSFunctionT = ml_type("function", [MLFunctionT], {
 	ml_call: function(caller, self, args) {
 		for (var i = 0; i < args.length; ++i) args[i] = ml_deref(args[i]);
@@ -1070,6 +1073,15 @@ function ml_frame_run(self, result) {
 	case 61: //MLI_IF_DEBUG
 		ip += 3;
 		break;
+	case 62: // MLI_ASSIGN_LOCAL
+		result = ml_deref(result);
+		result = ml_assign(stack[code[ip + 2]], result);
+		if (result.ml_type === MLErrorT) {
+			ip = self.ep;
+		} else {
+			ip += 3;
+		}
+		break;
 	}
 }
 export function ml_closure(info, upvalues) {
@@ -1602,6 +1614,7 @@ export function ml_decode(value, cache) {
 			}
 		} else {
 			switch (value[0]) {
+			case 'regex': return new RegExp(value[1]);
 			case 'method': return ml_method(value[1]);
 			case 'list': {
 				let list = [];
