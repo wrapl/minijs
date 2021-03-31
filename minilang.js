@@ -1099,55 +1099,6 @@ export function ml_module(name, exports) {
 	return ml_value(MLModuleT, {name, exports});
 }
 
-export const MLArrayT = ml_type("array");
-MLArrayT.exports.int8 = ml_type("int8-array", [MLArrayT], {base: Int8Array});
-MLArrayT.exports.uint8 = ml_type("uint8-array", [MLArrayT], {base: Uint8Array});
-MLArrayT.exports.int16 = ml_type("int16-array", [MLArrayT], {base: Int16Array});
-MLArrayT.exports.uint16 = ml_type("uint16-array", [MLArrayT], {base: UInt16Array});
-MLArrayT.exports.int32 = ml_type("int32-array", [MLArrayT], {base: Int32Array});
-MLArrayT.exports.uint32 = ml_type("uint32-array", [MLArrayT], {base: Uint32Array});
-MLArrayT.exports.int64 = ml_type("int64-array", [MLArrayT], {base: Int64Array});
-MLArrayT.exports.uint64 = ml_type("uint64-array", [MLArrayT], {base: Uint64Array});
-MLArrayT.exports.float32 = ml_type("float32-array", [MLArrayT], {base: Float32Array});
-MLArrayT.exports.float64 = ml_type("float64-array", [MLArrayT], {base: Float64Array});
-
-function ml_array_of_shape(type, source, degree) {
-	if (ml_is(source, MLListT)) {
-		let size = source.length;
-		if (!size) return ml_error("ValueError", "Empty dimension in array");
-		let shape = ml_array_of_shape(type, source[0], degree + 1);
-		if (shape.ml_type === MLErrorT) return shape;
-		shape[degree] = size;
-		return shape;
-	} else if (ml_is(source, MLTupleT)) {
-		let size = source.values.length;
-		if (!size) return ml_error("ValueError", "Empty dimension in array");
-		let shape = ml_array_of_shape(type, source.values[0], degree + 1);
-		if (shape.ml_type === MLErrorT) return shape;
-		shape[degree] = size;
-		return shape;
-	} else if (ml_is(source, MLArrayT)) {
-		return new Array(degree).concat(source.shape);
-	} else {
-		return new Array(degree).concat([1]);
-	}
-}
-
-export function ml_array(typename, shape) {
-	let type = MLArrayT.exports[typename];
-	if (!type) return ml_error("ArrayError", `Unknown array type: ${typename}`);
-	var size = type.base.BYTES_PER_ELEMENT;
-	let strides = new Array(shape.length);
-	for (var i = shape.length; --i >= 0;) {
-		strides[i] = size;
-		size *= shape[i];
-	}
-	let bytes = new ArrayBuffer(size);
-	return ml_value(type, {shape, strides, bytes});
-}
-
-
-
 Globals.print = function(caller, args) {
 	if (args.length === 0) return ml_resume(caller, MLNil);
 	let buffer = ml_stringbuffer();
