@@ -136,6 +136,11 @@ export const MLNil = ml_value(MLNilT);
 export const MLSomeT = ml_type("some");
 export const MLSome = ml_value(MLSomeT);
 
+export const MLBlankT = ml_type("blank", [], {
+	ml_assign: function(_, value) { return value; }
+});
+export const MLBlank = ml_value(MLBlankT);
+
 export const MLErrorT = ml_type("error");
 export function ml_error(type, message) {
 	return ml_value(MLErrorT, {type, message, stack: []});
@@ -210,7 +215,7 @@ export function ml_method_define(method, types, variadic, func) {
 		method = ml_method(method);
 	} else if (method.ml_type === MLTypeT) {
 		let type = method;
-		method = ml_type.of;
+		method = type.of;
 		if (method === undefined) {
 			method = type.of = ml_method(type.name + "::of");
 		}
@@ -415,6 +420,16 @@ export function ml_chained(entries) {
 }
 
 export const MLTupleT = ml_type("tuple", [], {
+	ml_assign: function(self, values) {
+		let count = self.values.length;
+		for (var i = 0; i < count; ++i) {
+			let value = ml_deref(ml_unpack(values, i + 1));
+			let ref = self.values[i];
+			let result = ref.ml_type.ml_assign(ref, value);
+			if (result.ml_type === MLErrorT) return result;
+		}
+		return values;
+	},
 	unpack: function(self, index) {
 		if (index > self.values.length) return MLNil;
 		return self.values[index - 1];
@@ -987,12 +1002,14 @@ function ml_frame_run(self, result) {
 		ip += 3;
 		break;
 	}
-	case 45: //MLI_TUPLE_NEW,
-		stack.push(ml_tuple(code[ip + 2]));
+	case 45: {//MLI_TUPLE_NEW,
+		let count = code[ip + 2];
+		result = ml_value(MLTupleT, {values: stack.splice(stack.length - count, count)});
 		ip += 3;
 		break;
+	}
 	case 46: //MLI_TUPLE_SET,
-		stack[stack.length - 1].values[code[ip + 2]] = result;
+		//stack[stack.length - 1].values[code[ip + 2]] = result;
 		ip += 3;
 		break;
 	case 47: //MLI_LIST_NEW,
@@ -1145,8 +1162,6 @@ export function ml_array(typename, shape) {
 	let bytes = new ArrayBuffer(size);
 	return ml_value(type, {shape, strides, bytes});
 }
-
-
 
 Globals.print = function(caller, args) {
 	if (args.length === 0) return ml_resume(caller, MLNil);
@@ -1463,6 +1478,28 @@ ml_method_define("append", [MLStringBufferT, MLStringT], false, function(caller,
 	ml_resume(caller, args[0]);
 });
 
+ml_method_define("append", [MLStringBufferT, MLTupleT], false, function(caller, args) {
+	let buffer = args[0];
+	let list = args[1].values;
+	if (!list.length) {
+		buffer.string += "()";
+		return ml_resume(caller, args[0]);
+	}
+	let state = {caller, list, index: 1, run: function(self, value) {
+		if (value.ml_type === MLErrorT) return ml_resume(self.caller, value);
+		let list = self.list;
+		if (self.index == list.length) {
+			value.string += ")";
+			ml_resume(self.caller, value);
+		} else {
+			value.string += ", ";
+			ml_call(state, appendMethod, [value, list[self.index++]]);
+		}
+	}};
+	buffer.string += "(";
+	ml_call(state, appendMethod, [buffer, list[0]]);
+});
+
 ml_method_define(MLListT, [MLIteratableT], true, function(caller, args) {
 	let list = [];
 	let state = {caller, list, run: iter_next};
@@ -1714,6 +1751,7 @@ export function ml_decode(value, cache) {
 			}
 		} else {
 			switch (value[0]) {
+			case 'blank': return MLBlank;
 			case 'regex': return new RegExp(value[1]);
 			case 'method': return ml_method(value[1]);
 			case 'list': {
