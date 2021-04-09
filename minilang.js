@@ -27,57 +27,69 @@ export function ml_resume(state, value) {
 	ml_exec(state.run, state, value);
 }
 
+export function ml_typeof(self) {
+	if (self === null) return MLNilT;
+	if (self === undefined) return MLNilT;
+	switch (typeof(self)) {
+	case "boolean": return MLBooleanT;
+	case "string": return MLStringT;
+	case "number": return MLNumberT;
+	case "function": return MLJSFunctionT;
+	default: return self.ml_type;
+	}
+}
+
 export function ml_hash(self) {
-	return self.ml_type.ml_hash(self);
+	return ml_typeof(self).ml_hash(self);
 }
 
 export function ml_deref(self) {
-	return self.ml_type.ml_deref(self);
+	return ml_typeof(self).ml_deref(self);
 }
 
 export function ml_assign(self, value) {
-	return self.ml_type.ml_assign(self, value);
+	return ml_typeof(self).ml_assign(self, value);
 }
 
 export function ml_call(caller, self, args) {
-	ml_exec(self.ml_type.ml_call, caller || EndState, self, args);
+	ml_exec(ml_typeof(self).ml_call, caller || EndState, self, args);
 }
 
 export function ml_iterate(caller, self) {
-	ml_exec(self.ml_type.iterate, caller, self);
+	ml_exec(ml_typeof(self).iterate, caller, self);
 }
 
 export function ml_iter_next(caller, self) {
-	ml_exec(self.ml_type.iter_next, caller, self);
+	ml_exec(ml_typeof(self).iter_next, caller, self);
 }
 
 export function ml_iter_key(caller, self) {
-	ml_exec(self.ml_type.iter_key, caller, self);
+	ml_exec(ml_typeof(self).iter_key, caller, self);
 }
 
 export function ml_iter_value(caller, self) {
-	ml_exec(self.ml_type.iter_value, caller, self);
+	ml_exec(ml_typeof(self).iter_value, caller, self);
 }
 
 export function ml_unpack(self, index) {
-	return self.ml_type.unpack(self, index);
+	return ml_typeof(self).unpack(self, index);
 }
 
 const DefaultMethods = {
 	ml_hash: function(self) { return self.toString(); },
 	ml_deref: function(self) { return self; },
-	ml_assign: function(self, _) { return ml_error("TypeError", `<${self.ml_type.name}> is not assignable`); },
+	ml_assign: function(self, _) { return ml_error("TypeError", `<${ml_typeof(self).name}> is not assignable`); },
 	ml_call: function(caller, self, args) {
 		ml_call(caller, callMethod, [self].concat(args));
 	}
 };
 
 export const MLTypeT = {
-	name: "ml_type",
+	name: "type",
 	prototype: {},
 	rank: 2,
 	exports: {},
-	ml_hash: function(self) { return `<${self.ml_type.name}>`; },
+	ml_hash: function(self) { return `<${ml_typeof(self).name}>`; },
 	ml_deref: DefaultMethods.ml_deref,
 	ml_assign: DefaultMethods.ml_assign,
 	ml_call: function(caller, self, args) {
