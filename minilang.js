@@ -1232,7 +1232,10 @@ Globals.count = function(caller, args) {
 
 Globals.first = function(caller, args) {
 	let state = {caller, run: function(self, value) {
-		ml_resume(self.caller, value);
+		self.run = function(self, value) {
+			ml_resume(self.caller, value);	
+		}
+		ml_iter_value(self, value);
 	}};
 	ml_iterate(state, args[0]);
 }
