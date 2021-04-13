@@ -28,7 +28,7 @@ export function ml_resume(state, value) {
 }
 
 export function ml_typeof(self) {
-	if (self === null) return MLNilT;
+	if (self == null) return MLNilT;
 	if (self === undefined) return MLNilT;
 	switch (typeof(self)) {
 	case "boolean": return MLBooleanT;
@@ -144,7 +144,7 @@ export const MLFunctionT = ml_type("function");
 export const MLIteratableT = ml_type("iteratable");
 
 export const MLNilT = ml_type("nil");
-export const MLNil = ml_value(MLNilT);
+export const MLNil = null;
 
 export const MLSomeT = ml_type("some");
 export const MLSome = ml_value(MLSomeT);
@@ -215,7 +215,7 @@ export const MLMethodT = ml_type("method", [MLFunctionT], {
 	}
 });
 export function ml_method(name) {
-	if (name === null) return ml_value(MLMethodT, {name});
+	if (name == null) return ml_value(MLMethodT, {name});
 	if (MethodsCache.hasOwnProperty(name)) return MethodsCache[name];
 	return (MethodsCache[name] = ml_value(MLMethodT, {
 		name,
@@ -250,9 +250,9 @@ export const MLNumberT = ml_type("number", [MLFunctionT], {
 		var index = self - 1;
 		if (index < 0) index += args.length + 1;
 		if (index < 0) {	
-			ml_resume(caller, MLNil);
+			ml_resume(caller, null);
 		} else if (index >= args.length) {
-			ml_resume(caller, MLNil);
+			ml_resume(caller, null);
 		} else {
 			ml_resume(caller, args[index]);
 		}
@@ -264,7 +264,7 @@ const MLRangeIterT = ml_type("range-iter", [], {
 	iter_next: function(caller, self) {
 		self.value += 1;
 		if (self.value > self.max) {
-			ml_resume(caller, MLNil);
+			ml_resume(caller, null);
 		} else {
 			self.key += 1;
 			ml_resume(caller, self);
@@ -304,7 +304,7 @@ const MLJSObjectIterT = ml_type("object-iter", [], {
 		if (keys.length) {
 			ml_resume(caller, self);
 		} else {
-			ml_resume(caller, MLNil);
+			ml_resume(caller, null);
 		}
 	},
 	iter_key: function(caller, self) {
@@ -320,7 +320,7 @@ export const MLJSObjectT = ml_type("object", [], {
 		if (keys.length) {
 			ml_resume(caller, ml_value(MLJSObjectIterT, {keys: keys, object: self}));
 		} else {
-			ml_resume(caller, MLNil);
+			ml_resume(caller, null);
 		}
 	}
 });
@@ -338,11 +338,11 @@ const MLPartialFunctionT = ml_type("partial-function", [MLFunctionT], {
 			if (arg !== undefined) {
 				combinedArgs[i] = arg;
 			} else {
-				combinedArgs[i] = (j < count) ? args[j++] : MLNil;
+				combinedArgs[i] = (j < count) ? args[j++] : null;
 			} 
 		}
 		for (; i < combinedCount; ++i) {
-			combinedArgs[i] = (j < count) ? args[j++] : MLNil;
+			combinedArgs[i] = (j < count) ? args[j++] : null;
 		}
 		ml_call(caller, self.func, combinedArgs);
 	}
@@ -416,7 +416,7 @@ function ml_chained_iterator_continue(self, value) {
 }
 function ml_chained_iterator_next(self, value) {
 	if (ml_typeof(value) === MLErrorT) return ml_resume(self.caller, value);
-	if (value === MLNil) return ml_resume(self.caller, value);
+	if (value == null) return ml_resume(self.caller, value);
 	self.run = ml_chained_iterator_key;
 	self.index = 1;
 	self.iter = value;
@@ -431,7 +431,7 @@ function ml_chained_iterator_key(self, value) {
 function ml_chained_iterator_filter(self, value) {
 	value = ml_deref(value);
 	if (ml_typeof(value) === MLErrorT) return ml_resume(self.caller, value);
-	if (value === MLNil) {
+	if (value == null) {
 		self.run = ml_chained_iterator_next;
 		ml_iter_next(self, self.iter);
 	} else {
@@ -470,7 +470,7 @@ export const MLTupleT = ml_type("tuple", [], {
 		return values;
 	},
 	unpack: function(self, index) {
-		if (index > self.values.length) return MLNil;
+		if (index > self.values.length) return null;
 		return self.values[index - 1];
 	}
 });
@@ -488,7 +488,7 @@ const MLListNodeT = ml_type("list-node", [], {
 		let list = self.list;
 		let index = self.index + 1;
 		if (index >= list.length) {
-			ml_resume(caller, MLNil);
+			ml_resume(caller, null);
 		} else {
 			ml_resume(caller, ml_value(MLListNodeT, {list, index}));
 		}
@@ -502,11 +502,11 @@ const MLListNodeT = ml_type("list-node", [], {
 });
 export const MLListT = ml_type("list", [MLIteratableT], {
 	iterate: function(caller, self) {
-		if (!self.length) return ml_resume(caller, MLNil);
+		if (!self.length) return ml_resume(caller, null);
 		ml_resume(caller, ml_value(MLListNodeT, {list: self, index: 0}));
 	},
 	unpack: function(self, index) {
-		if (index > self.length) return MLNil;
+		if (index > self.length) return null;
 		return self[index - 1];
 	}
 });
@@ -540,7 +540,7 @@ const MLMapNodeT = ml_type("map-node", [], {
 	ml_deref: function(self) { return self.value; },
 	ml_assign: function(self, value) { return self.value = value; },
 	iter_next: function(caller, self) {
-		ml_resume(caller, self.next || MLNil);
+		ml_resume(caller, self.next || null);
 	},
 	iter_key: function(caller, self) {
 		ml_resume(caller, self.key);
@@ -551,7 +551,7 @@ const MLMapNodeT = ml_type("map-node", [], {
 });
 export const MLMapT = ml_type("map", [MLIteratableT], {
 	iterate: function(caller, self) {
-		ml_resume(caller, self.head || MLNil);
+		ml_resume(caller, self.head || null);
 	}
 });
 MLMapT.prototype.forEach = function(callback) {
@@ -587,7 +587,7 @@ export function ml_map_insert(map, key, value) {
 		nodes.push(ml_value(MLMapNodeT, {key, value}));
 	}
 	++map.size;
-	return MLNil;
+	return null;
 }
 export function ml_map_delete(map, key) {
 	let hash = ml_hash(key);
@@ -609,7 +609,7 @@ export function ml_map_delete(map, key) {
 			return node.value;
 		}
 	}
-	return MLNil;
+	return null;
 }
 export function ml_map_search(map, key) {
 	let hash = ml_hash(key);
@@ -621,7 +621,7 @@ export function ml_map_search(map, key) {
 	return null;
 }
 const MLMapIndexT = ml_type("map-index", [], {
-	ml_deref: function(_) { return MLNil; },
+	ml_deref: function(_) { return null; },
 	ml_assign: function(self, value) {
 		ml_map_insert(self.map, self.key, value);
 		return value;
@@ -664,9 +664,9 @@ function ml_global(value) {
 
 const MLFrameT = ml_type("frame", [MLFunctionT], {
 	iter_next: function(caller, self) {
-		if (!self.suspend) return ml_resume(caller, MLNil);
+		if (!self.suspend) return ml_resume(caller, null);
 		self.caller = caller;
-		ml_resume(self, MLNil);
+		ml_resume(self, null);
 	},
 	iter_key: function(caller, self) {
 		if (!self.suspend) return ml_resume(caller, ml_error("StateError", "Function did not suspend"));
@@ -708,7 +708,7 @@ export const MLClosureT = ml_type("closure", [MLFunctionT, MLIteratableT], {
 			if (ml_typeof(arg) === MLNamesT) break;
 			stack.push(ml_deref(arg));
 		}
-		for (var j = i; j < numParams; ++j) stack.push(MLNil);
+		for (var j = i; j < numParams; ++j) stack.push(null);
 		if (extraArgs) {
 			let rest = [];
 			for (; i < count; ++i) {
@@ -755,7 +755,7 @@ export const MLClosureT = ml_type("closure", [MLFunctionT, MLIteratableT], {
 				}
 			}
 		}
-		ml_resume(frame, MLNil);
+		ml_resume(frame, null);
 	},
 	iterate: function(caller, self) {
 		MLClosureT.ml_call(caller, self, []);
@@ -784,12 +784,12 @@ function ml_frame_run(self, result) {
 		ip += 2;
 		break;
 	case 4: //MLI_NIL,
-		result = MLNil;
+		result = null;
 		ip += 2;
 		break;
 	case 5: //MLI_NIL_PUSH,
-		result = MLNil;
-		stack.push(result = MLNil);
+		result = null;
+		stack.push(result = null);
 		ip += 2;
 		break;
 	case 6: //MLI_SOME,
@@ -797,24 +797,24 @@ function ml_frame_run(self, result) {
 		ip += 2;
 		break;
 	case 7: //MLI_AND,
-		if (ml_deref(result) === MLNil) {
+		if (ml_deref(result) == null) {
 			ip = code[ip + 2];
 		} else {
 			ip += 3;
 		}
 		break;
 	case 8: //MLI_OR,
-		if (ml_deref(result) !== MLNil) {
+		if (ml_deref(result) !== null) {
 			ip = code[ip + 2];
 		} else {
 			ip += 3;
 		}
 		break;
 	case 9: //MLI_NOT,
-		if (ml_deref(result) === MLNil) {
+		if (ml_deref(result) == null) {
 			result = MLSome;
 		} else {
-			result = MLNil;
+			result = null;
 		}
 		break;
 	case 10: //MLI_PUSH,
@@ -847,7 +847,7 @@ function ml_frame_run(self, result) {
 		break;
 	case 15: //MLI_ENTER,
 		for (var i = code[ip + 2]; --i >= 0;) {
-			let variable = ml_value(MLVariableT, {value: MLNil});
+			let variable = ml_value(MLVariableT, {value: null});
 			stack.push(variable);
 		}
 		for (var i = code[ip + 3]; --i >= 0;) {
@@ -963,7 +963,7 @@ function ml_frame_run(self, result) {
 		self.ip = ip + 2;
 		return ml_iterate(self, result);
 	case 34: //MLI_ITER,
-		if (result === MLNil) {
+		if (result == null) {
 			ip = code[ip + 2];
 		} else {
 			stack.push(result);
@@ -1035,7 +1035,7 @@ function ml_frame_run(self, result) {
 	case 44: {//MLI_LOCALX,
 		let index = code[ip + 2];
 		result = stack[index];
-		if (result === null) {
+		if (result == null) {
 			result = stack[index] = ml_uninitialized("let");
 		}
 		ip += 3;
@@ -1078,12 +1078,12 @@ function ml_frame_run(self, result) {
 			var value;
 			if (index < 0) {
 				value = self.upvalues[~index];
-				if (value === null) {
+				if (value == null) {
 					value = self.upvalues[~index] = ml_uninitialized("<upvalue>");
 				}
 			} else {
 				value = stack[index];
-				if (value === null) {
+				if (value == null) {
 					value = stack[index] = ml_uninitialized("<upvalue>");
 				}
 			}
@@ -1203,13 +1203,13 @@ export function ml_array(typename, shape) {
 }
 
 Globals.print = function(caller, args) {
-	if (args.length === 0) return ml_resume(caller, MLNil);
+	if (args.length === 0) return ml_resume(caller, null);
 	let buffer = ml_stringbuffer();
 	let state = {caller, index: 1, run: function(self, value) {
 		if (ml_typeof(value) === MLErrorT) return ml_resume(self.caller, value);
 		if (self.index === args.length) {
 			console.log(value.string);
-			return ml_resume(self.caller, MLNil);
+			return ml_resume(self.caller, null);
 		}
 		ml_call(self, appendMethod, [value, args[self.index++]]);
 	}};
@@ -1220,7 +1220,7 @@ Globals.count = function(caller, args) {
 	let state = {caller, count: 0, run: function(self, value) {
 		if (ml_typeof(value) === MLErrorT) {
 			ml_resume(self.caller, value);
-		} else if (value === MLNil) {
+		} else if (value == null) {
 			ml_resume(self.caller, self.count);
 		} else {
 			self.count++;
@@ -1244,7 +1244,7 @@ Globals.first2 = function(caller, args) {
 	let state = {caller, run: function(self, value) {
 		if (ml_typeof(value) === MLErrorT) {
 			return ml_resume(self.caller, value);
-		} else if (value === MLNil) {
+		} else if (value == null) {
 			return ml_resume(self.caller, value);
 		}
 		self.iter = value;
@@ -1274,10 +1274,10 @@ ml_method_define("append", [MLStringBufferT, MLSomeT], false, function(caller, a
 });
 
 ml_method_define("=", [MLAnyT, MLAnyT], false, function(caller, args) {
-	ml_resume(caller, args[0] === args[1] ? args[1] : MLNil);
+	ml_resume(caller, args[0] === args[1] ? args[1] : null);
 });
 ml_method_define("!=", [MLAnyT, MLAnyT], false, function(caller, args) {
-	ml_resume(caller, args[0] !== args[1] ? args[1] : MLNil);
+	ml_resume(caller, args[0] !== args[1] ? args[1] : null);
 });
 
 ml_method_define("->", [MLFunctionT, MLFunctionT], false, function(caller, args) {
@@ -1364,16 +1364,16 @@ ml_method_define("/", [MLNumberT, MLNumberT], false, function(caller, args) {
 });
 
 ml_method_define("<", [MLNumberT, MLNumberT], false, function(caller, args) {
-	ml_resume(caller, args[0] < args[1] ? args[1] : MLNil);
+	ml_resume(caller, args[0] < args[1] ? args[1] : null);
 });
 ml_method_define(">", [MLNumberT, MLNumberT], false, function(caller, args) {
-	ml_resume(caller, args[0] > args[1] ? args[1] : MLNil);
+	ml_resume(caller, args[0] > args[1] ? args[1] : null);
 });
 ml_method_define("<=", [MLNumberT, MLNumberT], false, function(caller, args) {
-	ml_resume(caller, args[0] <= args[1] ? args[1] : MLNil);
+	ml_resume(caller, args[0] <= args[1] ? args[1] : null);
 });
 ml_method_define(">=", [MLNumberT, MLNumberT], false, function(caller, args) {
-	ml_resume(caller, args[0] >= args[1] ? args[1] : MLNil);
+	ml_resume(caller, args[0] >= args[1] ? args[1] : null);
 });
 ml_method_define("..", [MLNumberT, MLNumberT], false, function(caller, args) {
 	ml_resume(caller, ml_value(MLRangeT, {min: args[0], max: args[1]}));
@@ -1456,7 +1456,7 @@ ml_method_define("[]", [MLStringT, MLNumberT], false, function(caller, args) {
 	let index = Math.floor(args[1]) - 1;
 	if (index < 0) index += string.length + 1;
 	if (index < 0 || index >= string.length) {
-		ml_resume(caller, MLNil);
+		ml_resume(caller, null);
 	} else {
 		ml_resume(caller, string[index]);
 	}
@@ -1468,11 +1468,11 @@ ml_method_define("[]", [MLStringT, MLNumberT, MLNumberT], false, function(caller
 	let end = Math.floor(args[2]) - 1;
 	if (end < 0) end += string.length + 1;
 	if (start < 0) {
-		ml_resume(caller, MLNil);
+		ml_resume(caller, null);
 	} else if (end > string.length) {
-		ml_resume(caller, MLNil);
+		ml_resume(caller, null);
 	} else if (end < start) {
-		ml_resume(caller, MLNil);
+		ml_resume(caller, null);
 	} else {
 		ml_resume(caller, string.substring(start, end));
 	}
@@ -1494,7 +1494,7 @@ ml_method_define("lower", [MLStringT], false, function(caller, args) {
 });
 ml_method_define("find", [MLStringT, MLStringT], false, function(caller, args) {
 	let index = args[0].indexOf(args[1]);
-	ml_resume(caller, index < 0 ? MLNil : index + 1);
+	ml_resume(caller, index < 0 ? null : index + 1);
 });
 ml_method_define("/", [MLStringT, MLStringT], false, function(caller, args) {
 	ml_resume(caller, args[0].split(args[1]));
@@ -1576,7 +1576,7 @@ ml_method_define(MLListT, [MLIteratableT], true, function(caller, args) {
 	function iter_next(self, value) {
 		if (ml_typeof(value) === MLErrorT) {
 			ml_resume(self.caller, value);
-		} else if (value === MLNil) {
+		} else if (value == null) {
 			ml_resume(self.caller, self.list);
 		} else {
 			self.iter = value;
@@ -1599,7 +1599,7 @@ ml_method_define("[]", [MLListT, MLNumberT], false, function(caller, args) {
 	let list = args[0];
 	var index = args[1] - 1;
 	if (index < 0) index += list.length + 1;
-	if (index < 0 || index >= list.length) return MLNil;
+	if (index < 0 || index >= list.length) return null;
 	ml_resume(caller, ml_value(MLListNodeT, {list, index}));
 });
 ml_method_define("push", [MLListT, MLAnyT], true, function(caller, args) {
@@ -1614,11 +1614,11 @@ ml_method_define("put", [MLListT, MLAnyT], true, function(caller, args) {
 });
 ml_method_define("pop", [MLListT], false, function(caller, args) {
 	let list = args[0];
-	ml_resume(caller, list.length ? list.shift() : MLNil);
+	ml_resume(caller, list.length ? list.shift() : null);
 });
 ml_method_define("pull", [MLListT], false, function(caller, args) {
 	let list = args[0];
-	ml_resume(caller, list.length ? list.pop() : MLNil);
+	ml_resume(caller, list.length ? list.pop() : null);
 });
 ml_method_define("length", [MLListT], false, function(caller, args) {
 	ml_resume(caller, args[0].length);
@@ -1655,7 +1655,7 @@ ml_method_define(MLMapT, [MLIteratableT], true, function(caller, args) {
 	function iter_next(self, value) {
 		if (ml_typeof(value) === MLErrorT) {
 			ml_resume(self.caller, value);
-		} else if (value === MLNil) {
+		} else if (value == null) {
 			ml_resume(self.caller, self.map);
 		} else {
 			self.iter = value;
@@ -1782,7 +1782,7 @@ ml_method_define("[]", [MLJSObjectT, MLStringT], false, function(caller, args) {
 	if (object.hasOwnProperty(key)) {
 		ml_resume(caller, object[key]);
 	} else {
-		ml_resume(caller, MLNil);
+		ml_resume(caller, null);
 	}
 });
 
