@@ -297,7 +297,33 @@ const MLJSFunctionT = ml_type("function", [MLFunctionT], {
 });
 Object.defineProperty(Function.prototype, "ml_type", {value: MLJSFunctionT});
 
-export const MLJSObjectT = ml_type("object");
+const MLJSObjectIterT = ml_type("object-iter", [], {
+	iter_next: function(caller, self) {
+		let keys = self.keys;
+		keys.shift();
+		if (keys.length) {
+			ml_resume(caller, self);
+		} else {
+			ml_resume(caller, MLNil);
+		}
+	},
+	iter_key: function(caller, self) {
+		ml_resume(caller, self.keys[0]);
+	},
+	iter_value: function(caller, self) {
+		ml_resume(caller, self.object[self.keys[0]]);
+	}
+});
+export const MLJSObjectT = ml_type("object", [], {
+	iterate: function(caller, self) {
+		let keys = Object.keys(self);
+		if (keys.length) {
+			ml_resume(caller, ml_value(MLJSObjectIterT, {keys: keys, object: self}));
+		} else {
+			ml_resume(caller, MLNil);
+		}
+	}
+});
 Object.defineProperty(Object.prototype, "ml_type", {value: MLJSObjectT});
 
 const MLPartialFunctionT = ml_type("partial-function", [MLFunctionT], {
@@ -1200,6 +1226,33 @@ Globals.count = function(caller, args) {
 			self.count++;
 			ml_iter_next(self, value);
 		}
+	}};
+	ml_iterate(state, args[0]);
+}
+
+Globals.first = function(caller, args) {
+	let state = {caller, run: function(self, value) {
+		ml_resume(self.caller, value);
+	}};
+	ml_iterate(state, args[0]);
+}
+
+Globals.first2 = function(caller, args) {
+	let state = {caller, run: function(self, value) {
+		if (ml_typeof(value) === MLErrorT) {
+			return ml_resume(self.caller, value);
+		} else if (value === MLNil) {
+			return ml_resume(self.caller, value);
+		}
+		self.iter = value;
+		self.run = function(self, value) {
+			self.key = value;
+			self.run = function(self, value) {
+				ml_resume(self.caller, ml_value(MLTupleT, [self.key, value]));
+			}
+			ml_iter_value(self, self.iter);
+		}
+		ml_iter_key(self, self.iter);
 	}};
 	ml_iterate(state, args[0]);
 }
