@@ -314,7 +314,7 @@ const MLJSObjectIterT = ml_type("object-iter", [], {
 		ml_resume(caller, self.object[self.keys[0]]);
 	}
 });
-export const MLJSObjectT = ml_type("object", [], {
+export const MLJSObjectT = ml_type("object", [MLIteratableT], {
 	iterate: function(caller, self) {
 		let keys = Object.keys(self);
 		if (keys.length) {
