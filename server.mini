@@ -1,4 +1,4 @@
-def onion := import("../Minilang/lib/ml_onion.so")
+library: onion("onion")
 def connection_status := onion::connection_status
 
 var Onion := onion::new()
@@ -40,12 +40,13 @@ for Name, Value in globals() do
 end
 
 Root:add("compile"; Request, Response) do
+	let Parser := parser()
 	let Compiler := compiler(global)
 	let Input := Request:get_post("input")
 	print("Input = ", Input, "\n")
-	Compiler:input(Input)
+	Parser:input(Input)
 	do
-		let Function := Compiler:compile
+		let Function := Parser:compile(Compiler)
 		Response:write(Encoder:encode(Function))
 	on Error do
 		Response:set_code(400)

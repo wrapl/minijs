@@ -1542,6 +1542,85 @@ ml_method_define("*/", [MLStringT, MLRegexT], false, function(caller, args) {
 	}
 	ml_resume(caller, [subject, ""]);
 });
+ml_method_define("after", [MLStringT, MLStringT], false, function(caller, args) {
+	let haystack = args[0];
+	let needle = args[1];
+	let index = haystack.indexOf(needle);
+	if (index >= 0) {
+		return ml_resume(caller, haystack.substring(index + needle.length));
+	} else {
+		return ml_resume(caller, null);
+	}
+});
+ml_method_define("before", [MLStringT, MLStringT], false, function(caller, args) {
+	let haystack = args[0];
+	let needle = args[1];
+	let index = haystack.indexOf(needle);
+	if (index >= 0) {
+		return ml_resume(caller, haystack.substring(0, index));
+	} else {
+		return ml_resume(caller, null);
+	}
+});
+ml_method_define("after", [MLStringT, MLStringT, MLNumberT], false, function(caller, args) {
+	let haystack = args[0];
+	let needle = args[1];
+	var count = args[2];
+	if (count > 0) {
+		var index = 0;
+		while (true) {
+			index = haystack.indexOf(needle, index);
+			if (index == -1) return ml_resume(caller, null);
+			index += needle.length;
+			if (--count <= 0) {
+				return ml_resume(caller, haystack.substring(index));
+			}
+		}
+	} else if (count < 0) {
+		for (var i = haystack.length - needle.length; i >= 0; --i) {
+			if (haystack.substring(i, i + needle.length) == needle) {
+				if (++count < 0) {
+					i -= needle.length;
+				} else {
+					return ml_resume(caller, haystack.substring(i + needle.length));
+				}
+			}
+		}
+		return ml_resume(caller, null);
+	} else {
+		return ml_resume(caller, haystack);
+	}
+});
+ml_method_define("before", [MLStringT, MLStringT, MLNumberT], false, function(caller, args) {
+	let haystack = args[0];
+	let needle = args[1];
+	var count = args[2];
+	if (count > 0) {
+		var index = 0;
+		while (true) {
+			index = haystack.indexOf(needle, index);
+			if (index == -1) return ml_resume(caller, null);
+			if (--count > 0) {
+				index += needle.length;
+			} else {
+				return ml_resume(caller, haystack.substring(0, index));
+			}
+		}
+	} else if (count < 0) {
+		for (var i = haystack.length - needle.length; i >= 0; --i) {
+			if (haystack.substring(i, i + needle.length) == needle) {
+				if (++count < 0) {
+					i -= needle.length;
+				} else {
+					return ml_resume(caller, haystack.substring(0, i));
+				}
+			}
+		}
+		return ml_resume(caller, null);
+	} else {
+		return ml_resume(caller, haystack);
+	}
+});
 ml_method_define("append", [MLStringBufferT, MLStringT], false, function(caller, args) {
 	args[0].string += args[1];
 	ml_resume(caller, args[0]);
