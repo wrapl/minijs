@@ -81,6 +81,9 @@ const DefaultMethods = {
 	ml_assign: function(self, _) { return ml_error("TypeError", `<${ml_typeof(self).name}> is not assignable`); },
 	ml_call: function(caller, self, args) {
 		ml_call(caller, callMethod, [self].concat(args));
+	},
+	iterate: function(caller, self) {
+		ml_resume(caller, ml_error("TypeError", `<${ml_typeof(self).name}> is not iteratable`));
 	}
 };
 
