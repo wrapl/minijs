@@ -694,7 +694,7 @@ export const MLClosureT = ml_type("closure", [MLFunctionT, MLIteratableT], {
 			line: info[2],
 			ip: info[9],
 			ep: info[10],
-			code: info[11],
+			code: info[12],
 			stack,
 			upvalues: self.upvalues
 		});
@@ -1936,7 +1936,7 @@ export function ml_decode(value, cache) {
 				return closure;
 			}
 			case '!': {
-				let code = value[11];
+				let code = value[12];
 				for (var i = 0; i < code.length; ++i) {
 					if (code[i] instanceof Array) code[i] = ml_decode(code[i], cache);
 				}
