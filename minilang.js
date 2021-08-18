@@ -826,12 +826,12 @@ function ml_frame_run(self, result) {
 		break;
 	case 11: //MLI_WITH,
 		stack.push(result);
-		ip += 2;
+		ip += 3;
 		break;
 	case 12: { //MLI_WITH_VAR,
 		let variable = ml_value(MLVariableT, {value: result});
 		stack.push(variable);
-		ip += 2;
+		ip += 3;
 		break;
 	}
 	case 13: { //MLI_WITHX,
@@ -856,11 +856,11 @@ function ml_frame_run(self, result) {
 		for (var i = code[ip + 3]; --i >= 0;) {
 			stack.push(null);
 		}
-		ip += 4;
+		ip += 5;
 		break;
 	case 16: //MLI_EXIT,
 		for (var i = code[ip + 2]; --i >= 0;) stack.pop();
-		ip += 3;
+		ip += 4;
 		break;
 	case 17: //MLI_GOTO,
 		ip = code[ip + 2];
@@ -892,7 +892,7 @@ function ml_frame_run(self, result) {
 			let top = code[ip + 2];
 			while (stack.length > top) stack.pop();
 			stack.push(result);
-			ip += 3;
+			ip += 4;
 		}
 		break;
 	case 21: //MLI_RETRY,
