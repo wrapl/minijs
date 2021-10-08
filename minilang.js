@@ -1924,9 +1924,13 @@ export function ml_decode(value, cache) {
 			}
 		} else {
 			switch (value[0]) {
+			case '_':
 			case 'blank': return MLBlank;
+			case 'r':
 			case 'regex': return new RegExp(value[1]);
+			case ':':
 			case 'method': return ml_method(value[1]);
+			case 'l':
 			case 'list': {
 				let list = [];
 				for (var i = 1; i < value.length; ++i) {
@@ -1934,6 +1938,7 @@ export function ml_decode(value, cache) {
 				}
 				return list;
 			}
+			case 'n':
 			case 'names': {
 				let names = [];
 				for (var i = 1; i < value.length; ++i) {
@@ -1942,6 +1947,7 @@ export function ml_decode(value, cache) {
 				names.ml_type = MLNamesT;
 				return names;
 			}
+			case 'm':
 			case 'map': {
 				let map = ml_map();
 				for (var i = 1; i < value.length; i += 2) {
@@ -1950,6 +1956,7 @@ export function ml_decode(value, cache) {
 				return map;
 			}
 			case 'global': return ml_global(ml_decode(value[1], cache));
+			case 'z':
 			case 'closure': {
 				let closure = ml_closure(ml_decode(value[1]), []);
 				for (var i = 2; i < value.length; ++i) {
