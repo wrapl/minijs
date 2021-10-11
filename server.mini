@@ -61,4 +61,5 @@ Root:add("compile"; Request, Response) do
 end
 
 Onion:set_port("9001")
+print("Listening on http://localhost:9001\n")
 Onion:listen
