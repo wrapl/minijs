@@ -1074,7 +1074,7 @@ function ml_frame_run(self, result) {
 		let args = stack.splice(stack.length - count, count);
 		let func = ml_deref(stack.pop());
 		let next = ip + 3;
-		if (code[next] === 1) { // MLI_RETURN
+		if (code[next] === MLI_RETURN) {
 			return ml_call(self.caller, func, args);
 		} else {
 			self.ip = next;
@@ -1088,7 +1088,7 @@ function ml_frame_run(self, result) {
 		let args = stack.splice(stack.length - count, count);
 		let func = code[ip + 2];
 		let next = ip + 4;
-		if (code[next] === 1) { // MLI_RETURN
+		if (code[next] === MLI_RETURN) {
 			return ml_call(self.caller, func, args);
 		} else {
 			self.ip = next;
@@ -1255,7 +1255,7 @@ function ml_frame_run(self, result) {
 		let args = stack.splice(stack.length - count, count);
 		let func = code[ip + 2];
 		let next = ip + 3;
-		if (code[next] === 1) { // MLI_RETURN
+		if (code[next] === MLI_RETURN) {
 			return ml_call(self.caller, func, args);
 		} else {
 			self.ip = next;
@@ -1277,7 +1277,7 @@ function ml_frame_run(self, result) {
 		let args = stack.splice(stack.length - count, count);
 		let func = code[ip + 2];
 		let next = ip + 3;
-		if (code[next] === 1) { // MLI_RETURN
+		if (code[next] === MLI_RETURN) {
 			return ml_call(self.caller, func, args);
 		} else {
 			self.ip = next;
