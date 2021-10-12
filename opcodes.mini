@@ -1,0 +1,16 @@
+let Opcodes := []
+
+with Input := file("opcodes.txt", "r") do
+	loop
+		let Line := while Input:read
+		Opcodes:put(Line:trim / ",")
+	end
+	Input:close
+end
+
+with Output := file("opcodes.js", "w") do
+	for I, (Name, Type) in Opcodes do
+		Output:write('const MLI_{Name} = {I - 1};\n')
+	end
+	Output:close
+end

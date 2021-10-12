@@ -683,6 +683,91 @@ const MLFrameT = ml_type("frame", [MLFunctionT], {
 	}
 });
 
+const MLI_AND = 0;
+const MLI_ASSIGN = 1;
+const MLI_ASSIGN_LOCAL = 2;
+const MLI_CALL = 3;
+const MLI_CATCH = 4;
+const MLI_CATCH_TYPE = 5;
+const MLI_CLOSURE = 6;
+const MLI_CLOSURE_TYPED = 7;
+const MLI_CONST_CALL = 8;
+const MLI_CONST_CALL_0 = 9;
+const MLI_CONST_CALL_1 = 10;
+const MLI_CONST_CALL_2 = 11;
+const MLI_CONST_CALL_3 = 12;
+const MLI_CONST_CALL_4 = 13;
+const MLI_CONST_CALL_5 = 14;
+const MLI_CONST_CALL_6 = 15;
+const MLI_CONST_CALL_7 = 16;
+const MLI_CONST_CALL_8 = 17;
+const MLI_CONST_CALL_9 = 18;
+const MLI_ENTER = 19;
+const MLI_EXIT = 20;
+const MLI_FOR = 21;
+const MLI_GOTO = 22;
+const MLI_IF_DEBUG = 23;
+const MLI_ITER = 24;
+const MLI_KEY = 25;
+const MLI_LET = 26;
+const MLI_LETI = 27;
+const MLI_LETX = 28;
+const MLI_LINK = 29;
+const MLI_LIST_APPEND = 30;
+const MLI_LIST_NEW = 31;
+const MLI_LOAD = 32;
+const MLI_LOAD_PUSH = 33;
+const MLI_LOAD_VAR = 34;
+const MLI_LOCAL = 35;
+const MLI_LOCAL_PUSH = 36;
+const MLI_LOCALI = 37;
+const MLI_MAP_INSERT = 38;
+const MLI_MAP_NEW = 39;
+const MLI_METHOD_CALL = 40;
+const MLI_METHOD_CALL_0 = 41;
+const MLI_METHOD_CALL_1 = 42;
+const MLI_METHOD_CALL_2 = 43;
+const MLI_METHOD_CALL_3 = 44;
+const MLI_METHOD_CALL_4 = 45;
+const MLI_METHOD_CALL_5 = 46;
+const MLI_METHOD_CALL_6 = 47;
+const MLI_METHOD_CALL_7 = 48;
+const MLI_METHOD_CALL_8 = 49;
+const MLI_METHOD_CALL_9 = 50;
+const MLI_NEXT = 51;
+const MLI_NIL = 52;
+const MLI_NIL_PUSH = 53;
+const MLI_NOT = 54;
+const MLI_OR = 55;
+const MLI_PARAM_TYPE = 56;
+const MLI_PARTIAL_NEW = 57;
+const MLI_PARTIAL_SET = 58;
+const MLI_POP = 59;
+const MLI_PUSH = 60;
+const MLI_REF = 61;
+const MLI_REFI = 62;
+const MLI_REFX = 63;
+const MLI_RESOLVE = 64;
+const MLI_RESUME = 65;
+const MLI_RETRY = 66;
+const MLI_RETURN = 67;
+const MLI_STRING_ADD = 68;
+const MLI_STRING_ADDS = 69;
+const MLI_STRING_END = 70;
+const MLI_STRING_NEW = 71;
+const MLI_SUSPEND = 72;
+const MLI_SWITCH = 73;
+const MLI_TRY = 74;
+const MLI_TUPLE_NEW = 75;
+const MLI_UPVALUE = 76;
+const MLI_VALUE_1 = 77;
+const MLI_VALUE_2 = 78;
+const MLI_VAR = 79;
+const MLI_VAR_TYPE = 80;
+const MLI_VARX = 81;
+const MLI_WITH = 82;
+const MLI_WITHX = 83;
+
 export const MLClosureT = ml_type("closure", [MLFunctionT, MLIteratableT], {
 	ml_call: function(caller, self, args) {
 		let info = self.info;
@@ -773,68 +858,64 @@ function ml_frame_run(self, result) {
 	let code = self.code;
 	let stack = self.stack;
 	for (;;) switch (code[ip]) {
-	case 1: //MLI_RETURN,
+	case MLI_RETURN:
 		return ml_resume(self.caller, result);
-	case 2: //MLI_SUSPEND,
+	case MLI_SUSPEND:
 		self.suspend = true;
 		self.ip = ip + 2;
 		self.line = code[ip + 1];
 		return ml_resume(self.	caller, self);
-	case 3: //MLI_RESUME,
+	case MLI_RESUME:
 		delete self.suspend;
 		stack.pop();
 		stack.pop();
 		ip += 2;
 		break;
-	case 4: //MLI_NIL,
+	case MLI_NIL:
 		result = null;
 		ip += 2;
 		break;
-	case 5: //MLI_NIL_PUSH,
+	case MLI_NIL_PUSH:
 		result = null;
 		stack.push(result = null);
 		ip += 2;
 		break;
-	case 6: //MLI_SOME,
-		result = MLSome;
-		ip += 2;
-		break;
-	case 7: //MLI_AND,
+	case MLI_AND:
 		if (ml_deref(result) == null) {
 			ip = code[ip + 2];
 		} else {
 			ip += 3;
 		}
 		break;
-	case 8: //MLI_OR,
+	case MLI_OR:
 		if (ml_deref(result) !== null) {
 			ip = code[ip + 2];
 		} else {
 			ip += 3;
 		}
 		break;
-	case 9: //MLI_NOT,
+	case MLI_NOT:
 		if (ml_deref(result) == null) {
 			result = MLSome;
 		} else {
 			result = null;
 		}
 		break;
-	case 10: //MLI_PUSH,
+	case MLI_PUSH:
 		stack.push(result);
 		ip += 2;
 		break;
-	case 11: //MLI_WITH,
+	case MLI_WITH:
 		stack.push(result);
 		ip += 3;
 		break;
-	case 12: { //MLI_LOAD_VAR,
-		result = code[ip + 3];
-		stack[stack.length + code[ip + 2]].value = result;
+	case MLI_LOAD_VAR: {
+		result = code[ip + 2];
+		stack[stack.length + code[ip + 3]].value = result;
 		ip += 4;
 		break;
 	}
-	case 13: { //MLI_WITHX,
+	case MLI_WITHX: {
 		let packed = result;
 		let count = code[ip + 2];
 		for (var i = 0; i < count; ++i) {
@@ -844,11 +925,11 @@ function ml_frame_run(self, result) {
 		ip += 4;
 		break;
 	}
-	case 14: //MLI_POP,
+	case MLI_POP:
 		result = stack.pop();
 		ip += 2;
 		break;
-	case 15: //MLI_ENTER,
+	case MLI_ENTER:
 		for (var i = code[ip + 2]; --i >= 0;) {
 			let variable = ml_value(MLVariableT, {value: null});
 			stack.push(variable);
@@ -858,18 +939,18 @@ function ml_frame_run(self, result) {
 		}
 		ip += 5;
 		break;
-	case 16: //MLI_EXIT,
+	case MLI_EXIT:
 		for (var i = code[ip + 2]; --i >= 0;) stack.pop();
 		ip += 4;
 		break;
-	case 17: //MLI_GOTO,
+	case MLI_GOTO:
 		ip = code[ip + 2];
 		break;
-	case 18: //MLI_TRY,
+	case MLI_TRY:
 		self.ep = code[ip + 2];
 		ip += 3;
 		break;
-	case 19: //MLI_CATCH_TYPE,
+	case MLI_CATCH_TYPE:
 		if (ml_typeof(result) !== MLErrorT) {
 			result = ml_error("InternalError", `expected error, not ${ml_typeof(result).name}`);
 			ml_error_trace_add(result, self.source, code[ip + 1]);
@@ -882,7 +963,7 @@ function ml_frame_run(self, result) {
 			}
 		}
 		break;
-	case 20: //MLI_CATCH,
+	case MLI_CATCH:
 		if (ml_typeof(result) !== MLErrorT) {
 			result = ml_error("InternalError", `expected error, not ${ml_typeof(result).name}`);
 			ml_error_trace_add(result, self.source, code[ip + 1]);
@@ -895,26 +976,26 @@ function ml_frame_run(self, result) {
 			ip += 4;
 		}
 		break;
-	case 21: //MLI_RETRY,
+	case MLI_RETRY:
 		ip = self.ep;
 		break;
-	case 22: //MLI_LOAD,
+	case MLI_LOAD:
 		result = code[ip + 2];
 		ip += 3;
 		break;
-	case 23: //MLI_LOAD_PUSH,
+	case MLI_LOAD_PUSH:
 		stack.push(result = code[ip + 2]);
 		ip += 3;
 		break;
-	case 24: //MLI_VAR,
+	case MLI_VAR:
 		result = ml_deref(result);
 		stack[stack.length + code[ip + 2]].value = result;
 		ip += 3;
 		break;
-	case 25: //MLI_VAR_TYPE,
+	case MLI_VAR_TYPE:
 		ip += 3;
 		break;
-	case 26: //MLI_VARX,
+	case MLI_VARX:
 		let packed = ml_deref(result);
 		let index = stack.length + code[ip + 2];
 		let count = code[ip + 3];
@@ -925,12 +1006,12 @@ function ml_frame_run(self, result) {
 		}
 		ip += 4;
 		break;
-	case 27: //MLI_LET,
+	case MLI_LET:
 		result = ml_deref(result);
 		stack[stack.length + code[ip + 2]] = result;
 		ip += 3;
 		break;
-	case 28: {//MLI_LETI,
+	case MLI_LETI: {
 		result = ml_deref(result);
 		let index = stack.length + code[ip + 2];
 		let uninitialized = stack[index];
@@ -941,7 +1022,7 @@ function ml_frame_run(self, result) {
 		ip += 3;
 		break;
 	}
-	case 29: {//MLI_LETX,
+	case MLI_LETX: {
 		let packed = ml_deref(result);
 		let index = stack.length + code[ip + 2];
 		let count = code[ip + 3];
@@ -957,15 +1038,15 @@ function ml_frame_run(self, result) {
 		ip += 4;
 		break;
 	}
-	case 30: //MLI_REF,
-	case 31: //MLI_REFI,
-	case 32: //MLI_REFX,
-	case 33: //MLI_FOR,
+	case MLI_REF:
+	case MLI_REFI:
+	case MLI_REFX:
+	case MLI_FOR:
 		result = ml_deref(result);
 		self.line = code[ip + 1];
 		self.ip = ip + 2;
 		return ml_iterate(self, result);
-	case 34: //MLI_ITER,
+	case MLI_ITER:
 		if (result == null) {
 			ip = code[ip + 2];
 		} else {
@@ -973,22 +1054,22 @@ function ml_frame_run(self, result) {
 			ip += 3;
 		}
 		break;
-	case 35: //MLI_NEXT,
+	case MLI_NEXT:
 		result = stack.pop();
 		self.line = code[ip + 1];
 		self.ip = code[ip + 2];
 		return ml_iter_next(self, result);
-	case 36: //MLI_VALUE_1,
+	case MLI_VALUE_1:
 		result = stack[stack.length - 1];
 		self.line = code[ip + 1];
 		self.ip = ip + 2;
 		return ml_iter_value(self, result);
-	case 37: //MLI_KEY,
+	case MLI_KEY:
 		result = stack[stack.length + code[ip + 2]];
 		self.line = code[ip + 1];
 		self.ip = ip + 3;
 		return ml_iter_key(self, result);
-	case 38: {//MLI_CALL,
+	case MLI_CALL: {
 		let count = code[ip + 2];
 		let args = stack.splice(stack.length - count, count);
 		let func = ml_deref(stack.pop());
@@ -1001,10 +1082,11 @@ function ml_frame_run(self, result) {
 			return ml_call(self, func, args);
 		}
 	}
-	case 39: {//MLI_CONST_CALL,
-		let count = code[ip + 2];
+	case MLI_CONST_CALL:
+	case MLI_METHOD_CALL: {
+		let count = code[ip + 3];
 		let args = stack.splice(stack.length - count, count);
-		let func = code[ip + 3];
+		let func = code[ip + 2];
 		let next = ip + 4;
 		if (code[next] === 1) { // MLI_RETURN
 			return ml_call(self.caller, func, args);
@@ -1014,7 +1096,7 @@ function ml_frame_run(self, result) {
 			return ml_call(self, func, args);
 		}
 	}
-	case 40: //MLI_ASSIGN,
+	case MLI_ASSIGN:
 		result = ml_deref(result);
 		result = ml_assign(stack.pop(), result);
 		if (ml_typeof(result) === MLErrorT) {
@@ -1023,58 +1105,58 @@ function ml_frame_run(self, result) {
 			ip += 2;
 		}
 		break;
-	case 41: //MLI_LOCAL,
+	case MLI_LOCAL:
 		result = stack[stack.length + code[ip + 2]];
 		ip += 3;
 		break;
-	case 42: //MLI_LOCAL_PUSH,
+	case MLI_LOCAL_PUSH:
 		stack.push(result = stack[stack.length + code[ip + 2]]);
 		ip += 3;
 		break;
-	case 43: //MLI_UPVALUE,
+	case MLI_LOCALI: {
+		let index = stack.length + code[ip + 2];
+		result = stack[index];
+		if (result === null) {
+			result = stack[index] = ml_uninitialized(code[ip + 3]);
+		}
+		ip += 4;
+		break;
+	}	
+	case MLI_UPVALUE:
 		result = self.upvalues[code[ip + 2]];
 		ip += 3;
 		break;
-	case 44: {//MLI_LOCALX,
-		let index = stack.length + code[ip + 2];
-		result = stack[index];
-		if (result == null) {
-			result = stack[index] = ml_uninitialized("let");
-		}
-		ip += 3;
-		break;
-	}
-	case 45: {//MLI_TUPLE_NEW,
+	case MLI_TUPLE_NEW: {
 		let count = code[ip + 2];
 		result = ml_value(MLTupleT, {values: stack.splice(stack.length - count, count)});
 		ip += 3;
 		break;
 	}
-	case 46: //MLI_VALUE_2,
+	case MLI_VALUE_2:
 		result = stack[stack.length - 2];
 		self.line = code[ip + 1];
 		self.ip = ip + 2;
 		return ml_iter_value(self, result);
-	case 47: //MLI_LIST_NEW,
+	case MLI_LIST_NEW:
 		stack.push([]);
 		ip += 2;
 		break;
-	case 48: //MLI_LIST_APPEND,
+	case MLI_LIST_APPEND:
 		stack[stack.length - 1].push(ml_deref(result));
 		ip += 2;
 		break;
-	case 49: //MLI_MAP_NEW,
+	case MLI_MAP_NEW:
 		stack.push(ml_map());
 		ip += 2;
 		break;
-	case 50: {//MLI_MAP_INSERT,
+	case MLI_MAP_INSERT: {
 		let key = stack.pop();
 		ml_map_insert(stack[stack.length - 1], key, ml_deref(result));
 		ip += 2;
 		break;
 	}
-	case 51:
-	case 52: {//MLI_CLOSURE, MLI_CLOSURE_TYPED,
+	case MLI_CLOSURE:
+	case MLI_CLOSURE_TYPED: {
 		let info = code[ip + 2];
 		let upvalues = [];
 		for (var i = 0; i < info[5]; ++i) {
@@ -1098,24 +1180,24 @@ function ml_frame_run(self, result) {
 		ip += 3 + upvalues.length;
 		break;
 	}
-	case 53: //MLI_PARAM_TYPE,
+	case MLI_PARAM_TYPE:
 		ip += 4;
 		break;
-	case 54: //MLI_PARTIAL_NEW,
+	case MLI_PARTIAL_NEW:
 		result = ml_deref(result);
 		stack.push(ml_partial_function(result, code[ip + 2]));
 		ip += 3;
 		break;
-	case 55: //MLI_PARTIAL_SET,
+	case MLI_PARTIAL_SET:
 		result = ml_deref(result);
 		ml_partial_function_set(stack[stack.length - 1], code[ip + 2], result);
 		ip += 3;
 		break;
-	case 56: //MLI_STRING_NEW,
+	case MLI_STRING_NEW:
 		stack.push(ml_stringbuffer());
 		ip += 2;
 		break;
-	case 57: {//MLI_STRING_ADD,
+	case MLI_STRING_ADD: {
 		let count = code[ip + 2] + 1;
 		let args = stack.splice(stack.length - count, count);
 		stack.push(args[0]);
@@ -1123,22 +1205,22 @@ function ml_frame_run(self, result) {
 		self.ip = ip + 3;
 		return ml_call(self, appendMethod, args);
 	}
-	case 58: //MLI_STRING_ADDS,
+	case MLI_STRING_ADDS:
 		stack[stack.length - 1].string += code[ip + 2];
 		ip += 3;
 		break;
-	case 59: //MLI_STRING_END,
+	case MLI_STRING_END:
 		result = stack.pop().string;
 		ip += 2;
 		break;
-	case 60: //MLI_RESOLVE,
+	case MLI_RESOLVE:
 		self.line = code[ip + 1];
 		self.ip = ip + 3;
 		return ml_call(self, symbolMethod, [result, code[ip + 2]]);
-	case 61: //MLI_IF_DEBUG
+	case MLI_IF_DEBUG:
 		ip += 3;
 		break;
-	case 62: // MLI_ASSIGN_LOCAL
+	case MLI_ASSIGN_LOCAL:
 		result = ml_deref(result);
 		result = ml_assign(stack[stack.length + code[ip + 2]], result);
 		if (ml_typeof(result) === MLErrorT) {
@@ -1147,7 +1229,7 @@ function ml_frame_run(self, result) {
 			ip += 3;
 		}
 		break;
-	case 63: {// MLI_SWITCH
+	case MLI_SWITCH: {
 		if (typeof(result) !== "number") {
 			result = ml_error("TypeError", `expected integer, not ${ml_typeof(result).name}`);
 			ml_error_trace_add(result, self.source, code[ip + 1]);
@@ -1159,17 +1241,39 @@ function ml_frame_run(self, result) {
 		}
 		break;
 	}
-	case 64:
-	case 65:
-	case 66:
-	case 67:
-	case 68:
-	case 69:
-	case 70:
-	case 71:
-	case 72:
-	case 73: {// MLI_CONST_CALL_0 .. 9
-		let count = code[ip] - 64;
+	case MLI_CONST_CALL_0:
+	case MLI_CONST_CALL_1:
+	case MLI_CONST_CALL_2:
+	case MLI_CONST_CALL_3:
+	case MLI_CONST_CALL_4:
+	case MLI_CONST_CALL_5:
+	case MLI_CONST_CALL_6:
+	case MLI_CONST_CALL_7:
+	case MLI_CONST_CALL_8:
+	case MLI_CONST_CALL_9: {
+		let count = code[ip] - MLI_CONST_CALL_0;
+		let args = stack.splice(stack.length - count, count);
+		let func = code[ip + 2];
+		let next = ip + 3;
+		if (code[next] === 1) { // MLI_RETURN
+			return ml_call(self.caller, func, args);
+		} else {
+			self.ip = next;
+			self.line = code[ip + 1];
+			return ml_call(self, func, args);
+		}
+	}
+	case MLI_METHOD_CALL_0:
+	case MLI_METHOD_CALL_1:
+	case MLI_METHOD_CALL_2:
+	case MLI_METHOD_CALL_3:
+	case MLI_METHOD_CALL_4:
+	case MLI_METHOD_CALL_5:
+	case MLI_METHOD_CALL_6:
+	case MLI_METHOD_CALL_7:
+	case MLI_METHOD_CALL_8:
+	case MLI_METHOD_CALL_9: {
+		let count = code[ip] - MLI_METHOD_CALL_0;
 		let args = stack.splice(stack.length - count, count);
 		let func = code[ip + 2];
 		let next = ip + 3;
