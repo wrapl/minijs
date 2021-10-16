@@ -1208,7 +1208,7 @@ function ml_frame_run(self, result) {
 		return ml_call(self, appendMethod, args);
 	}
 	case MLI_STRING_ADD_1: {
-		let args = stack.splice(stack.length - 1, count);
+		let args = stack.splice(stack.length - 2, 2);
 		stack.push(args[0]);
 		self.line = code[ip + 1];
 		self.ip = ip + 2;
