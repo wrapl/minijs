@@ -1067,9 +1067,9 @@ function ml_frame_run(self, result) {
 		self.ip = ip + 2;
 		return ml_iter_value(self, result);
 	case MLI_KEY:
-		result = stack[stack.length + code[ip + 2]];
+		result = stack[stack.length - 1];
 		self.line = code[ip + 1];
-		self.ip = ip + 3;
+		self.ip = ip + 2;
 		return ml_iter_key(self, result);
 	case MLI_CALL: {
 		let count = code[ip + 2];
