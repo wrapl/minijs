@@ -966,16 +966,17 @@ function ml_frame_run(self, result) {
 		}
 		break;
 	case MLI_CATCH:
+		self.ep = code[ip + 2];
 		if (ml_typeof(result) !== MLErrorT) {
 			result = ml_error("InternalError", `expected error, not ${ml_typeof(result).name}`);
 			ml_error_trace_add(result, self.source, code[ip + 1]);
 			ip = self.ep;
 		} else {
 			result = ml_error_value(result);
-			let top = code[ip + 2];
+			let top = code[ip + 3];
 			while (stack.length > top) stack.pop();
 			stack.push(result);
-			ip += 4;
+			ip += 5;
 		}
 		break;
 	case MLI_RETRY:
