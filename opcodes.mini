@@ -1,14 +1,17 @@
 let Opcodes := []
 
-with Input := file("opcodes.txt", "r") do
+let Version := with Input := file("opcodes.txt", "r") do
+	let Version := Input:read:trim
 	loop
 		let Line := while Input:read
 		Opcodes:put(Line:trim / ",")
 	end
 	Input:close
+	Version
 end
 
 with Output := file("opcodes.js", "w") do
+	Output:write('const ML_BYTECODE_VERSION = {Version};\n\n')
 	for I, (Name, Type) in Opcodes do
 		Output:write('const MLI_{Name} = {I - 1};\n')
 	end

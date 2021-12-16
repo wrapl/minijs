@@ -1,3 +1,5 @@
+const ML_BYTECODE_VERSION = 1;
+
 const MLI_AND = 0;
 const MLI_ASSIGN_LOCAL = 1;
 const MLI_ASSIGN = 2;

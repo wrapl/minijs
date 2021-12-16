@@ -1,15 +1,16 @@
-library: onion("onion")
+import: onion("web/onion")
 def connection_status := onion::connection_status
 
-var Onion := onion::new()
+var Onion := onion()
 var Root := Onion:root_url
 
 Root:add(""; Request, Response) do
 	print("Path = ", Request:get_path, "\n")
 	print("Full Path = ", Request:get_fullpath, "\n")
 	let File := file("index.xhtml", "r")
+	Response:set_code(200)
 	Response:set_header("Content-Type", "application/xhtml+xml")
-	Response:write(File:read(10000000))
+	Response:write(File:rest)
 	File:close
 	Response:flush
 end
@@ -18,8 +19,9 @@ Root:add("minilang.js"; Request, Response) do
 	print("Path = ", Request:get_path, "\n")
 	print("Full Path = ", Request:get_fullpath, "\n")
 	let File := file("minilang.js", "r")
+	Response:set_code(200)
 	Response:set_header("Content-Type", "text/javascript")
-	Response:write(File:read(10000000))
+	Response:write(File:rest)
 	File:close
 	Response:flush
 end
@@ -28,8 +30,9 @@ Root:add("test.js"; Request, Response) do
 	print("Path = ", Request:get_path, "\n")
 	print("Full Path = ", Request:get_fullpath, "\n")
 	let File := file("test.js", "r")
+	Response:set_code(200)
 	Response:set_header("Content-Type", "text/javascript")
-	Response:write(File:read(10000000))
+	Response:write(File:rest)
 	File:close
 	Response:flush
 end
@@ -47,6 +50,8 @@ Root:add("compile"; Request, Response) do
 	Parser:input(Input)
 	do
 		let Function := Parser:compile(Compiler)
+		Response:set_code(200)
+		Response:set_header("Content-Type", "application/json")
 		Response:write(Encoder:encode(Function))
 	on Error do
 		Response:set_code(400)

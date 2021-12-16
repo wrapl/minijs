@@ -683,6 +683,8 @@ const MLFrameT = ml_type("frame", [MLFunctionT], {
 	}
 });
 
+const ML_BYTECODE_VERSION = 1;
+
 const MLI_AND = 0;
 const MLI_ASSIGN_LOCAL = 1;
 const MLI_ASSIGN = 2;
@@ -777,17 +779,17 @@ export const MLClosureT = ml_type("closure", [MLFunctionT, MLIteratableT], {
 		let frame = ml_value(MLFrameT, {
 			caller,
 			run: ml_frame_run,
-			source: info[1],
-			line: info[2],
-			ip: info[9],
-			ep: info[10],
-			code: info[12],
+			source: info[2],
+			line: info[3],
+			ip: info[10],
+			ep: info[11],
+			code: info[13],
 			stack,
 			upvalues: self.upvalues
 		});
-		var numParams = info[4];
-		let extraArgs = info[6];
-		let namedArgs = info[7];
+		var numParams = info[5];
+		let extraArgs = info[7];
+		let namedArgs = info[8];
 		if (extraArgs) --numParams;
 		if (namedArgs) --numParams;
 		let count = args.length;
@@ -813,7 +815,7 @@ export const MLClosureT = ml_type("closure", [MLFunctionT, MLIteratableT], {
 			for (; i < count; ++i) {
 				let arg = args[i];
 				if (ml_typeof(arg) === MLNamesT) {
-					let params = info[8];
+					let params = info[9];
 					for (var j = 0; j < arg.length; ++j) {
 						let name = arg[j];
 						let index = params.indexOf(name);
@@ -831,7 +833,7 @@ export const MLClosureT = ml_type("closure", [MLFunctionT, MLIteratableT], {
 			for (; i < count; ++i) {
 				let arg = args[i];
 				if (ml_typeof(arg) === MLNamesT) {
-					let params = info[8];
+					let params = info[9];
 					for (var j = 0; j < arg.length; ++j) {
 						let name = arg[j];
 						let index = params.indexOf(name);
@@ -1162,7 +1164,7 @@ function ml_frame_run(self, result) {
 	case MLI_CLOSURE_TYPED: {
 		let info = code[ip + 2];
 		let upvalues = [];
-		for (var i = 0; i < info[5]; ++i) {
+		for (var i = 0; i < info[6]; ++i) {
 			let index = code[ip + 3 + i];
 			var value;
 			if (index < 0) {
@@ -2119,7 +2121,8 @@ export function ml_decode(value, cache) {
 				return closure;
 			}
 			case '!': {
-				let code = value[12];
+				if (value[1] !== ML_BYTECODE_VERSION) throw 'Bytecode version mismatch';
+				let code = value[13];
 				for (var i = 0; i < code.length; ++i) {
 					if (code[i] instanceof Array) code[i] = ml_decode(code[i], cache);
 				}
