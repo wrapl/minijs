@@ -904,6 +904,7 @@ function ml_frame_run(self, result) {
 		} else {
 			result = null;
 		}
+		ip += 2;
 		break;
 	case MLI_PUSH:
 		stack.push(result);
