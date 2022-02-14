@@ -535,7 +535,7 @@ export const MLNamesT = ml_type("names", [MLListT, MLIteratableT], {
 });
 export function ml_names() {
 	let names = [];
-	names.ml_type = MLNamesT;
+	Object.defineProperty(names, "ml_type", {value: MLNamesT});
 	return names;
 }
 
@@ -2097,11 +2097,10 @@ export function ml_decode(value, cache) {
 			}
 			case 'n':
 			case 'names': {
-				let names = [];
+				let names = ml_names();
 				for (var i = 1; i < value.length; ++i) {
 					names.push(value[i].toString());
 				}
-				names.ml_type = MLNamesT;
 				return names;
 			}
 			case 'm':
