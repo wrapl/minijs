@@ -940,7 +940,7 @@ function ml_frame_run(self, result) {
 			stack.push(variable);
 		}
 		for (var i = code[ip + 3]; --i >= 0;) {
-			stack.push(null);
+			stack.push(undefined);
 		}
 		ip += 5;
 		break;
