@@ -205,7 +205,7 @@ export const MLMethodT = ml_type("method", [MLFunctionT], {
 			func = self.signatures[signature] = bestFunc;
 		}
 		return ml_call(caller, func, args);
-		
+
 		function score_definition(types, args) {
 			var score = 0;
 			for (var i = 0; i < types.length; ++i) {
@@ -224,7 +224,7 @@ export function ml_method(name) {
 		name,
 		definitions: [],
 		signatures: {}
-	})); 
+	}));
 }
 export function ml_method_define(method, types, variadic, func) {
 	if (typeof(method) === 'string') {
@@ -252,7 +252,7 @@ export const MLNumberT = ml_type("number", [MLFunctionT], {
 	ml_call: function(caller, self, args) {
 		var index = self - 1;
 		if (index < 0) index += args.length + 1;
-		if (index < 0) {	
+		if (index < 0) {
 			ml_resume(caller, null);
 		} else if (index >= args.length) {
 			ml_resume(caller, null);
@@ -342,7 +342,7 @@ const MLPartialFunctionT = ml_type("partial-function", [MLFunctionT], {
 				combinedArgs[i] = arg;
 			} else {
 				combinedArgs[i] = (j < count) ? args[j++] : null;
-			} 
+			}
 		}
 		for (; i < combinedCount; ++i) {
 			combinedArgs[i] = (j < count) ? args[j++] : null;
@@ -1021,7 +1021,7 @@ function ml_frame_run(self, result) {
 		result = ml_deref(result);
 		let index = stack.length + code[ip + 2];
 		let uninitialized = stack[index];
-		if (uninitialized !== null) {
+		if (uninitialized !== undefined) {
 			ml_uninitialized_set(uninitialized, result);
 		}
 		stack[index] = result;
@@ -1037,7 +1037,7 @@ function ml_frame_run(self, result) {
 			result = ml_deref(result);
 			let uninitialized = stack[index + i];
 			stack[index + i] = result;
-			if (uninitialized !== null) {
+			if (uninitialized !== undefined) {
 				ml_uninitialized_set(uninitialized, result);
 			}
 		}
@@ -1122,12 +1122,12 @@ function ml_frame_run(self, result) {
 	case MLI_LOCALI: {
 		let index = stack.length + code[ip + 2];
 		result = stack[index];
-		if (result === null) {
+		if (result === undefined) {
 			result = stack[index] = ml_uninitialized(code[ip + 3]);
 		}
 		ip += 4;
 		break;
-	}	
+	}
 	case MLI_UPVALUE:
 		result = self.upvalues[code[ip + 2]];
 		ip += 3;
@@ -1170,12 +1170,12 @@ function ml_frame_run(self, result) {
 			var value;
 			if (index < 0) {
 				value = self.upvalues[~index];
-				if (value == null) {
+				if (value === undefined) {
 					value = self.upvalues[~index] = ml_uninitialized("<upvalue>");
 				}
 			} else {
 				value = stack[index];
-				if (value == null) {
+				if (value === undefined) {
 					value = stack[index] = ml_uninitialized("<upvalue>");
 				}
 			}
@@ -1393,7 +1393,7 @@ Globals.count = function(caller, args) {
 Globals.first = function(caller, args) {
 	let state = {caller, run: function(self, value) {
 		self.run = function(self, value) {
-			ml_resume(self.caller, value);	
+			ml_resume(self.caller, value);
 		}
 		ml_iter_value(self, value);
 	}};
