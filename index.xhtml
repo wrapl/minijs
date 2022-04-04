@@ -23,6 +23,13 @@ let outputElement = document.getElementById("output");
 let compileElement = document.getElementById("compile");
 let executeElement = document.getElementById("execute");
 
+inputElement.onkeydown = function(event) {
+	if (event.keyCode === 9) {
+		event.preventDefault();
+		inputElement.setRangeText('	', inputElement.selectionStart, inputElement.selectionStart, 'end');
+	}
+}
+
 Globals.print = function(caller, args) {
 	if (args.length === 0) return ml_resume(caller, MLNil);
 	let state = {caller, index: 1, run: function(self, value) {
@@ -34,7 +41,7 @@ Globals.print = function(caller, args) {
 }
 
 compileElement.onclick = function() {
-	let request = new XMLHttpRequest();	
+	let request = new XMLHttpRequest();
 	request.onreadystatechange = function() {
 		if (request.readyState === XMLHttpRequest.DONE) {
 			if (request.status === 200) {
