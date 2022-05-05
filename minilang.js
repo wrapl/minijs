@@ -1366,16 +1366,16 @@ export function ml_module(name, exports) {
 }
 
 export const MLArrayT = ml_type("array");
-MLArrayT.exports.int8 = ml_type("int8-array", [MLArrayT], {base: Int8Array});
-MLArrayT.exports.uint8 = ml_type("uint8-array", [MLArrayT], {base: Uint8Array});
-MLArrayT.exports.int16 = ml_type("int16-array", [MLArrayT], {base: Int16Array});
-MLArrayT.exports.uint16 = ml_type("uint16-array", [MLArrayT], {base: Uint16Array});
-MLArrayT.exports.int32 = ml_type("int32-array", [MLArrayT], {base: Int32Array});
-MLArrayT.exports.uint32 = ml_type("uint32-array", [MLArrayT], {base: Uint32Array});
-MLArrayT.exports.int64 = ml_type("int64-array", [MLArrayT], {base: BigInt64Array});
-MLArrayT.exports.uint64 = ml_type("uint64-array", [MLArrayT], {base: BigUint64Array});
-MLArrayT.exports.float32 = ml_type("float32-array", [MLArrayT], {base: Float32Array});
-MLArrayT.exports.float64 = ml_type("float64-array", [MLArrayT], {base: Float64Array});
+MLArrayT.exports.int8 = ml_type("array::int8", [MLArrayT], {base: Int8Array});
+MLArrayT.exports.uint8 = ml_type("array::uint8", [MLArrayT], {base: Uint8Array});
+MLArrayT.exports.int16 = ml_type("array::int16", [MLArrayT], {base: Int16Array});
+MLArrayT.exports.uint16 = ml_type("array::uint16", [MLArrayT], {base: Uint16Array});
+MLArrayT.exports.int32 = ml_type("array::int32", [MLArrayT], {base: Int32Array});
+MLArrayT.exports.uint32 = ml_type("array::uint32", [MLArrayT], {base: Uint32Array});
+MLArrayT.exports.int64 = ml_type("array::int64", [MLArrayT], {base: BigInt64Array});
+MLArrayT.exports.uint64 = ml_type("array::uint64", [MLArrayT], {base: BigUint64Array});
+MLArrayT.exports.float32 = ml_type("array::float32", [MLArrayT], {base: Float32Array});
+MLArrayT.exports.float64 = ml_type("array::float64", [MLArrayT], {base: Float64Array});
 
 function ml_array_of_shape(type, source, degree) {
 	if (ml_is(source, MLListT)) {
@@ -1409,7 +1409,8 @@ export function ml_array(typename, shape) {
 		size *= shape[i];
 	}
 	let bytes = new ArrayBuffer(size);
-	return ml_value(type, {shape, strides, bytes});
+	let view = new DataView(bytes);
+	return ml_value(type, {shape, strides, bytes, view});
 }
 
 Globals.print = function(caller, args) {
@@ -2069,6 +2070,18 @@ ml_method_define("::", [MLModuleT, MLStringT], false, function(caller, args) {
 	}
 });
 
+function array_append(type, buffer, degree, shape, strides, bytes) {
+	if (degree == 0) {
+		new type(buffer)
+	}
+}
+
+ml_method_define("append", [MLStringBufferT, MLArrayT], false, function(caller, args) {
+	let shape = args[1].shape;
+	args[0].string += ml_typeof(args[1]).name + "[" + shape.join("x") + "]";
+	ml_resume(caller, args[0]);
+});
+
 ml_method_define("type", [MLErrorValueT], false, function(caller, args) {
 	ml_resume(caller, args[0].type);
 });
@@ -2179,6 +2192,16 @@ export function ml_decode(value, cache) {
 				return value;
 			}
 			case '^': return Globals[value[1]];
+			case "array": {
+				let array = ml_array(value[1], value[2]);
+				let values = new (ml_typeof(array).base)(array.bytes);
+				if (value[1] === "int64" || value[1] === "uint64") {
+					values.set(value[3].map(BigInt));
+				} else {
+					values.set(value[3]);
+				}
+				return array;
+			}
 			}
 		}
 	}
