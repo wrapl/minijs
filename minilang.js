@@ -1893,40 +1893,18 @@ MLArrayT.exports.uint64 = ml_type("array::uint64", [MLArrayT], {base: BigUint64A
 MLArrayT.exports.float32 = ml_type("array::float32", [MLArrayT], {base: Float32Array});
 MLArrayT.exports.float64 = ml_type("array::float64", [MLArrayT], {base: Float64Array});
 
-function ml_array_of_shape(type, source, degree) {
-	if (ml_is(source, MLListT)) {
-		let size = source.length;
-		if (!size) return ml_error("ValueError", "Empty dimension in array");
-		let shape = ml_array_of_shape(type, source[0], degree + 1);
-		if (ml_typeof(shape) === MLErrorT) return shape;
-		shape[degree] = size;
-		return shape;
-	} else if (ml_is(source, MLTupleT)) {
-		let size = source.values.length;
-		if (!size) return ml_error("ValueError", "Empty dimension in array");
-		let shape = ml_array_of_shape(type, source.values[0], degree + 1);
-		if (ml_typeof(shape) === MLErrorT) return shape;
-		shape[degree] = size;
-		return shape;
-	} else if (ml_is(source, MLArrayT)) {
-		return new Array(degree).concat(source.shape);
-	} else {
-		return new Array(degree).concat([1]);
-	}
-}
-
 export function ml_array(typename, shape) {
 	let type = MLArrayT.exports[typename];
 	if (!type) return ml_error("ArrayError", `Unknown array type: ${typename}`);
-	let size = type.base.BYTES_PER_ELEMENT;
-	let strides = new Array(shape.length);
-	for (let i = shape.length; --i >= 0;) {
+	let size = 1;
+	let degree = shape.length;
+	let strides = new Array(degree);
+	for (let i = degree; --i >= 0;) {
 		strides[i] = size;
 		size *= shape[i];
 	}
-	let bytes = new ArrayBuffer(size);
-	let view = new DataView(bytes);
-	return ml_value(type, {shape, strides, bytes, view});
+	let values = new (type.base)(size);
+	return ml_value(type, {degree, shape, strides, values});
 }
 
 Globals.print = function(caller, args) {
@@ -2586,18 +2564,6 @@ ml_method_define("::", [MLModuleT, MLStringT], false, function(caller, args) {
 	}
 });
 
-function array_append(type, buffer, degree, shape, strides, bytes) {
-	if (degree == 0) {
-		new type(buffer)
-	}
-}
-
-ml_method_define("append", [MLStringBufferT, MLArrayT], false, function(caller, args) {
-	let shape = args[1].shape;
-	args[0].string += ml_typeof(args[1]).name + "[" + shape.join("x") + "]";
-	ml_resume(caller, args[0]);
-});
-
 ml_method_define("type", [MLErrorValueT], false, function(caller, args) {
 	ml_resume(caller, args[0].type);
 });
@@ -2624,6 +2590,68 @@ ml_method_define("[]", [MLJSObjectT, MLStringT], false, function(caller, args) {
 	} else {
 		ml_resume(caller, null);
 	}
+});
+
+function ml_array_of_create(type, source, degree) {
+	if (ml_is(source, MLListT)) {
+		let size = source.length;
+		if (!size) return ml_error("ValueError", "Empty dimension in array");
+		let shape = ml_array_of_create(type, source[0], degree + 1);
+		if (ml_typeof(shape) === MLErrorT) return shape;
+		shape[degree] = size;
+		return shape;
+	} else if (ml_is(source, MLTupleT)) {
+		let size = source.values.length;
+		if (!size) return ml_error("ValueError", "Empty dimension in array");
+		let shape = ml_array_of_create(type, source.values[0], degree + 1);
+		if (ml_typeof(shape) === MLErrorT) return shape;
+		shape[degree] = size;
+		return shape;
+	} else if (ml_is(source, MLArrayT)) {
+		return new Array(degree).concat(source.shape);
+	} else {
+		return new Array(degree).concat([1]);
+	}
+}
+
+function ml_array_of_fill(array, value, degree, offset) {
+}
+
+ml_method_define(MLArrayT, [MLAnyT], false, function(caller, args) {
+
+});
+
+function ml_array_append(buffer, array, degree, offset) {
+	if (!array.shape[degree]) {
+		buffer.string += "<>";
+		return;
+	}
+	buffer.string += "<";
+	let stride = array.strides[degree];
+	if (degree === array.degree - 1) {
+		let values = array.values;
+		buffer.string += values.at(offset).toString();
+		for (let i = array.shape[degree]; --i > 0;) {
+			buffer.string += " ";
+			offset += stride;
+			buffer.string += values.at(offset).toString();
+		}
+	} else {
+		ml_array_append(buffer, array, degree + 1, offset);
+		for (let i = array.shape[degree]; --i > 0;) {
+			buffer.string += " ";
+			offset += stride;
+			ml_array_append(buffer, array, degree + 1, offset);
+		}
+	}
+	buffer.string += ">";
+}
+
+ml_method_define("append", [MLStringBufferT, MLArrayT], false, function(caller, args) {
+	let buffer = args[0];
+	let array = args[1];
+	ml_array_append(buffer, array, 0, 0);
+	ml_resume(caller, buffer);
 });
 
 export function ml_decode(value, cache) {
@@ -2717,11 +2745,10 @@ export function ml_decode(value, cache) {
 			case '^': return Globals[value[1]];
 			case "array": {
 				let array = ml_array(value[1], value[2]);
-				let values = new (ml_typeof(array).base)(array.bytes);
 				if (value[1] === "int64" || value[1] === "uint64") {
-					values.set(value[3].map(BigInt));
+					array.values.set(value[3].map(BigInt));
 				} else {
-					values.set(value[3]);
+					array.values.set(value[3]);
 				}
 				return array;
 			}
