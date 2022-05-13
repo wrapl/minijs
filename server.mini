@@ -58,7 +58,7 @@ Root:add("compile"; Request, Response) do
 		Response:set_header("Content-Type", "text/plain")
 		Response:write('{Error:type}\n')
 		Response:write('{Error:message}\n')
-		for (Source, Line) in Response:trace do
+		for (Source, Line) in Error:trace do
 			Response:write('\t{Source}:{Line}\n')
 		end
 	end

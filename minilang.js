@@ -1383,9 +1383,11 @@ function ml_frame_run(self, result) {
 }
 function ml_frame_debug_run(self, result) {
 	let ip = self.ip;
-	if (ml_typeof(result) === MLErrorT) {
+	if (ml_typeof(result) === MLErrorT && !self.reentry) {
 		ml_error_trace_add(result, self.source, self.line);
-		ip = self.ep;
+		self.ip = self.ep;
+		self.reentry = true;
+		return ml_exec(ml_debugger.run, self, result);
 	}
 	let code = self.code;
 	let stack = self.stack;
@@ -2024,6 +2026,10 @@ export function ml_array(type, shape) {
 	}
 	let values = new (type.base)(size);
 	return ml_value(type, {degree, shape, strides, values, offset: 0});
+}
+
+Globals.error = function(caller, args) {
+	ml_resume(caller, ml_error(args[0].toString(), args[1].toString()));
 }
 
 Globals.print = function(caller, args) {
