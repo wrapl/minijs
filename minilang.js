@@ -1383,11 +1383,15 @@ function ml_frame_run(self, result) {
 }
 function ml_frame_debug_run(self, result) {
 	let ip = self.ip;
-	if (ml_typeof(result) === MLErrorT && !self.reentry) {
+	if (ml_typeof(result) === MLErrorT) {
+		if (self.reentry) {
+			self.reentry = false;
+		} else {
+			self.reentry = true;
+			return ml_exec(ml_debugger.run, self, result);
+		}
 		ml_error_trace_add(result, self.source, self.line);
-		self.ip = self.ep;
-		self.reentry = true;
-		return ml_exec(ml_debugger.run, self, result);
+		ip = self.ep;
 	}
 	let code = self.code;
 	let stack = self.stack;
