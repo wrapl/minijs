@@ -269,8 +269,10 @@ Object.defineProperty(Number.prototype, "ml_type", {value: MLNumberT});
 
 const MLRangeIterT = ml_type("range-iter", [], {
 	iter_next: function(caller, self) {
-		self.value += 1;
-		if (self.value > self.max) {
+		self.value += self.step;
+		if (self.step > 0 && self.value > self.max) {
+			ml_resume(caller, null);
+		} else if (self.step < 0 && self.value < self.max) {
 			ml_resume(caller, null);
 		} else {
 			self.key += 1;
@@ -286,7 +288,13 @@ const MLRangeIterT = ml_type("range-iter", [], {
 });
 export const MLRangeT = ml_type("range", [MLIteratableT], {
 	iterate: function(caller, self) {
-		ml_resume(caller, ml_value(MLRangeIterT, {max: self.max, key: 1, value: self.min}));
+		if (self.step > 0 && self.min > self.max) {
+			ml_resume(caller, null);
+		} else if (self.step < 0 && self.min < self.max) {
+			ml_resume(caller, null);
+		} else {
+			ml_resume(caller, ml_value(MLRangeIterT, {max: self.max, step: self.step, key: 1, value: self.min}));
+		}
 	}
 });
 
@@ -1881,21 +1889,132 @@ export function ml_module(name, exports) {
 	return ml_value(MLModuleT, {name, exports});
 }
 
-export const MLArrayT = ml_type("array");
-MLArrayT.exports.int8 = ml_type("array::int8", [MLArrayT], {base: Int8Array});
-MLArrayT.exports.uint8 = ml_type("array::uint8", [MLArrayT], {base: Uint8Array});
-MLArrayT.exports.int16 = ml_type("array::int16", [MLArrayT], {base: Int16Array});
-MLArrayT.exports.uint16 = ml_type("array::uint16", [MLArrayT], {base: Uint16Array});
-MLArrayT.exports.int32 = ml_type("array::int32", [MLArrayT], {base: Int32Array});
-MLArrayT.exports.uint32 = ml_type("array::uint32", [MLArrayT], {base: Uint32Array});
-MLArrayT.exports.int64 = ml_type("array::int64", [MLArrayT], {base: BigInt64Array});
-MLArrayT.exports.uint64 = ml_type("array::uint64", [MLArrayT], {base: BigUint64Array});
-MLArrayT.exports.float32 = ml_type("array::float32", [MLArrayT], {base: Float32Array});
-MLArrayT.exports.float64 = ml_type("array::float64", [MLArrayT], {base: Float64Array});
+function ml_array_copy(target, target_offset, source, source_offset, degree) {
+	let target_stride = target.strides[degree + (target.degree - source.degree)];
+	let source_stride = source.strides[degree];
+	if (degree === source.degree - 1) {
+		for (let i = 0; i < source.shape[degree]; ++i) {
+			target.values[target_offset] = source.values[source_offset];
+			target_offset += target_stride;
+			source_offset += source_stride;
+		}
+	} else {
+		for (let i = 0; i < source.shape[degree]; ++i) {
+			ml_array_copy(target, target_offset, source, source_offset, degree + 1);
+			target_offset += target_stride;
+			source_offset += source_stride;
+		}
+	}
+}
 
-export function ml_array(typename, shape) {
-	let type = MLArrayT.exports[typename];
-	if (!type) return ml_error("ArrayError", `Unknown array type: ${typename}`);
+function ml_array_assign_array(target, offset, source, degree) {
+	if (degree === (target.degree - source.degree)) {
+		ml_array_copy(target, offset, source, source.offset, 0);
+	} else {
+		let stride = target.strides[degree];
+		for (let i = 0; i < target.shape[degree]; ++i) {
+			ml_array_assign_array(target, offset, source, degree + 1);
+			offset += stride;
+		}
+	}
+}
+
+function ml_array_assign_value(target, offset, source, degree) {
+	if (degree === target.degree) {
+		target.values[offset] = source;
+	} else {
+		let stride = target.strides[degree];
+		for (let i = 0; i < target.shape[degree]; ++i) {
+			ml_array_assign_value(target, offset, source, degree + 1);
+			offset += stride;
+		}
+	}
+}
+
+function ml_array_deref(self) {
+	if (self.degree === 0) return self.values[self.offset];
+	return self;
+}
+
+function ml_array_assign(self, value) {
+	if (ml_is(value, MLNumberT)) {
+		ml_array_assign_value(self, self.offset, value, 0);
+		return value;
+	} else if (ml_is(value, MLArrayT)) {
+		if (value.degree > self.degree) return ml_error("ShapeError", "Incompatible array assignment");
+		for (let i = 1; i < value.degree; ++i) {
+			if (value.shape[value.degree - i] !== self.shape[self.degree - i]) return ml_error("ShapeError", "Incompatible array assignment");
+		}
+		ml_array_assign_array(self, self.offset, value, 0);
+		return value;
+	} else {
+		return ml_error("TypeError", "Unsupported value for array assignment");
+	}
+}
+
+export const MLArrayT = ml_type("array");
+MLArrayT.exports.uint8 = ml_type("array::uint8", [MLArrayT], {
+	base: Uint8Array, index: 1,
+	ml_deref: ml_array_deref,
+	ml_assign: ml_array_assign
+});
+MLArrayT.exports.int8 = ml_type("array::int8", [MLArrayT], {
+	base: Int8Array, index: 2,
+	ml_deref: ml_array_deref,
+	ml_assign: ml_array_assign
+});
+MLArrayT.exports.uint16 = ml_type("array::uint16", [MLArrayT], {
+	base: Uint16Array, index: 3,
+	ml_deref: ml_array_deref,
+	ml_assign: ml_array_assign
+});
+MLArrayT.exports.int16 = ml_type("array::int16", [MLArrayT], {
+	base: Int16Array, index: 4,
+	ml_deref: ml_array_deref,
+	ml_assign: ml_array_assign
+});
+MLArrayT.exports.uint32 = ml_type("array::uint32", [MLArrayT], {
+	base: Uint32Array, index: 5,
+	ml_deref: ml_array_deref,
+	ml_assign: ml_array_assign
+});
+MLArrayT.exports.int32 = ml_type("array::int32", [MLArrayT], {
+	base: Int32Array, index: 6,
+	ml_deref: ml_array_deref,
+	ml_assign: ml_array_assign
+});
+MLArrayT.exports.uint64 = ml_type("array::uint64", [MLArrayT], {
+	base: BigUint64Array, index: 7,
+	ml_deref: ml_array_deref,
+	ml_assign: ml_array_assign
+});
+MLArrayT.exports.int64 = ml_type("array::int64", [MLArrayT], {
+	base: BigInt64Array, index: 8,
+	ml_deref: ml_array_deref,
+	ml_assign: ml_array_assign
+});
+MLArrayT.exports.float32 = ml_type("array::float32", [MLArrayT], {
+	base: Float32Array, index: 9,
+	ml_deref: ml_array_deref,
+	ml_assign: ml_array_assign
+});
+MLArrayT.exports.float64 = ml_type("array::float64", [MLArrayT], {
+	base: Float64Array, index: 10,
+	ml_deref: ml_array_deref,
+	ml_assign: ml_array_assign
+});
+MLArrayT.exports.any = ml_type("array::any", [MLArrayT], {
+	base: Array, index: 11,
+	ml_deref: ml_array_deref,
+	ml_assign: ml_array_assign
+});
+
+export function ml_array(type, shape) {
+	if (typeof(type) === "string") {
+		let actual = MLArrayT.exports[type];
+		if (!actual) return ml_error("ArrayError", `Unknown array type: ${type}`);
+		type = actual;
+	}
 	let size = 1;
 	let degree = shape.length;
 	let strides = new Array(degree);
@@ -1904,7 +2023,7 @@ export function ml_array(typename, shape) {
 		size *= shape[i];
 	}
 	let values = new (type.base)(size);
-	return ml_value(type, {degree, shape, strides, values});
+	return ml_value(type, {degree, shape, strides, values, offset: 0});
 }
 
 Globals.print = function(caller, args) {
@@ -2081,7 +2200,10 @@ ml_method_define(">=", [MLNumberT, MLNumberT], false, function(caller, args) {
 	ml_resume(caller, args[0] >= args[1] ? args[1] : null);
 });
 ml_method_define("..", [MLNumberT, MLNumberT], false, function(caller, args) {
-	ml_resume(caller, ml_value(MLRangeT, {min: args[0], max: args[1]}));
+	ml_resume(caller, ml_value(MLRangeT, {min: args[0], max: args[1], step: 1}));
+});
+ml_method_define("..", [MLRangeT, MLNumberT], false, function(caller, args) {
+	ml_resume(caller, ml_value(MLRangeT, {min: args[0].min, max: args[0].max, step: args[1]}));
 });
 
 ml_method_define("append", [MLStringBufferT, MLNumberT], false, function(caller, args) {
@@ -2592,33 +2714,150 @@ ml_method_define("[]", [MLJSObjectT, MLStringT], false, function(caller, args) {
 	}
 });
 
-function ml_array_of_create(type, source, degree) {
+function ml_array_of_type(source, type) {
+	if (ml_is(source, MLListT)) {
+		source.forEach(value => {
+			type = ml_array_of_type(value, type);
+		});
+	} else if (ml_is(source, MLTupleT)) {
+		source.values.forEach(value => {
+			type = ml_array_of_type(value, type);
+		});
+	} else if (ml_is(source, MLNumberT)) {
+		if (type.index < MLArrayT.exports.float64.index) type = MLArrayT.exports.float64;
+	} else if (ml_is(source, MLRangeT)) {
+		if (type.index < MLArrayT.exports.float64.index) type = MLArrayT.exports.float64;
+	} else {
+		if (type.index < MLArrayT.exports.any.index) type = MLArrayT.exports.any;
+	}
+	return type;
+}
+
+function ml_array_of_shape(source, degree) {
 	if (ml_is(source, MLListT)) {
 		let size = source.length;
 		if (!size) return ml_error("ValueError", "Empty dimension in array");
-		let shape = ml_array_of_create(type, source[0], degree + 1);
+		let shape = ml_array_of_shape(source[0], degree + 1);
 		if (ml_typeof(shape) === MLErrorT) return shape;
 		shape[degree] = size;
 		return shape;
 	} else if (ml_is(source, MLTupleT)) {
 		let size = source.values.length;
 		if (!size) return ml_error("ValueError", "Empty dimension in array");
-		let shape = ml_array_of_create(type, source.values[0], degree + 1);
+		let shape = ml_array_of_shape(source.values[0], degree + 1);
 		if (ml_typeof(shape) === MLErrorT) return shape;
 		shape[degree] = size;
 		return shape;
 	} else if (ml_is(source, MLArrayT)) {
 		return new Array(degree).concat(source.shape);
+	} else if (ml_is(source, MLRangeT)) {
+		let count = Math.floor((source.max - source.min) / source.step) + 1;
+		if (count <= 0) return ml_error("ValueError", "Empty dimension in array");
+		return new Array(degree).concat([count]);
 	} else {
-		return new Array(degree).concat([1]);
+		return new Array(degree);
 	}
 }
 
-function ml_array_of_fill(array, value, degree, offset) {
+function ml_array_of_fill(array, source, degree, offset) {
+	if (ml_is(source, MLListT)) {
+		if (array.degree == degree) return ml_error("ValueError", "Inconsistent depth in array");
+		let size = source.length;
+		if (size != array.shape[degree]) return ml_error("ValueError", "Inconsistent lengths in array");
+		let stride = array.strides[degree];
+		for (var i = 0; i < size; ++i) {
+			let error = ml_array_of_fill(array, source[i], degree + 1, offset);
+			if (error) return error;
+			offset += stride;
+		}
+	} else if (ml_is(source, MLTupleT)) {
+		if (array.degree == degree) return ml_error("ValueError", "Inconsistent depth in array");
+		let size = source.values.length;
+		if (size != array.shape[degree]) return ml_error("ValueError", "Inconsistent lengths in array");
+		let stride = array.strides[degree];
+		for (var i = 0; i < size; ++i) {
+			let error = ml_array_of_fill(array, source.values[i], degree + 1, offset);
+			if (error) return error;
+			offset += stride;
+		}
+	} else if (ml_is(source, MLArrayT)) {
+		if (array.degree == degree) return ml_error("ValueError", "Inconsistent depth in array");
+		if (source.degree !== array.degree - degree) return ml_error("ArrayError", "Incompatible assignment");
+		for (let i = 0; i < source.degree; ++i) {
+			if (source.shape[i] !== array.degree[degree + i]) return ml_error("ArrayError", "Incompatible assignment");
+		}
+		ml_array_copy(array, offset, source, source.offset, 0);
+	} else if (ml_is(source, MLRangeT)) {
+		if (array.degree == degree) return ml_error("ValueError", "Inconsistent depth in array");
+		let step = source.step;
+		let count = Math.floor((source.max - source.min) / step) + 1;
+		if (count !== array.shape[degree]) return ml_error("ValueError", "Inconsistent lengths in array");
+		let values = array.values;
+		let stride = array.strides[degree];
+		if (source.step > 0) {
+			for (let value = source.min; value <= source.max; value += step) {
+				values[offset] = value;
+				offset += stride;
+			}
+		} else if (source.step < 0) {
+			for (let value = source.min; value >= source.max; value += step) {
+				values[offset] = value;
+				offset += stride;
+			}
+		}
+	} else {
+		console.log(array, offset, source);
+		array.values[offset] = source;
+	}
+	return null;
 }
 
 ml_method_define(MLArrayT, [MLAnyT], false, function(caller, args) {
+	let type = ml_array_of_type(args[0], MLArrayT.exports.float64);
+	let shape = ml_array_of_shape(args[0], 0);
+	let array = ml_array(type, shape);
+	let error = ml_array_of_fill(array, args[0], 0, 0);
+	ml_resume(caller, error || array);
+});
 
+ml_method_define("[]", [MLArrayT], true, function(caller, args) {
+	let array = args[0], j = 0;
+	let shape = [], strides = [], offset = array.offset;
+	for (let i = 1; i < args.length; ++i) {
+		let index = args[i];
+		if (index == null) {
+			shape.push(array.shape[j]);
+			strides.push(array.strides[j]);
+			j += 1;
+		} else if (ml_is(index, MLNumberT)) {
+			if (index <= 0) index += array.shape[j] + 1;
+			if (index < 1 || index > array.shape[j]) return ml_resume(caller, null);
+			offset += (index - 1) * array.strides[j];
+			j += 1;
+		} else if (ml_is(index, MLRangeT)) {
+			let min = index.min, max = index.max, step = index.step;
+			if (min <= 0) min += array.shape[j] + 1;
+			if (min < 1 || min > array.shape[j]) return ml_resume(caller, null);
+			if (max <= 0) max += array.shape[j] + 1;
+			if (max < 1 || max > array.shape[j]) return ml_resume(caller, null);
+			let count = Math.floor((max - min) / step) + 1;
+			if (count <= 0) return ml_resume(caller, null);
+			shape.push(count);
+			strides.push(step * array.strides[j]);
+			offset += (min - 1) * array.strides[j];
+			j += 1;
+		} else {
+			return ml_resume(caller, ml_error("TypeError", "Unsupported type for array index"));
+		}
+	}
+	while (j < array.degree) {
+		shape.push(array.shape[j]);
+		strides.push(array.strides[j]);
+		j += 1;
+	}
+	let degree = shape.length;
+	let values = array.values;
+	ml_resume(caller, ml_value(ml_typeof(array), {degree, shape, strides, values, offset}));
 });
 
 function ml_array_append(buffer, array, degree, offset) {
@@ -2650,7 +2889,7 @@ function ml_array_append(buffer, array, degree, offset) {
 ml_method_define("append", [MLStringBufferT, MLArrayT], false, function(caller, args) {
 	let buffer = args[0];
 	let array = args[1];
-	ml_array_append(buffer, array, 0, 0);
+	ml_array_append(buffer, array, 0, array.offset);
 	ml_resume(caller, buffer);
 });
 
