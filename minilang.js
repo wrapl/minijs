@@ -1627,7 +1627,8 @@ function ml_frame_debug_run(self, result) {
 			self.line = code[ip + 1];
 			self.ip = ip + 2;
 			return ml_iter_key(self, result);
-		case MLI_CALL: {
+		case MLI_CALL:
+		case MLI_TAIL_CALL: {
 			let count = code[ip + 2];
 			let args = stack.splice(stack.length - count, count);
 			let func = ml_deref(stack.pop());
@@ -1635,12 +1636,6 @@ function ml_frame_debug_run(self, result) {
 			self.ip = next;
 			self.line = code[ip + 1];
 			return ml_call(self, func, args);
-		}
-		case MLI_TAIL_CALL: {
-			let count = code[ip + 2];
-			let args = stack.splice(stack.length - count, count);
-			let func = ml_deref(stack.pop());
-			return ml_call(self.caller, func, args);
 		}
 		case MLI_ASSIGN:
 			result = ml_deref(result);
@@ -1800,7 +1795,9 @@ function ml_frame_debug_run(self, result) {
 			break;
 		}
 		case MLI_CALL_CONST:
-		case MLI_CALL_METHOD: {
+		case MLI_CALL_METHOD:
+		case MLI_TAIL_CALL_CONST:
+		case MLI_TAIL_CALL_METHOD: {
 			let count = code[ip + 3];
 			let args = stack.splice(stack.length - count, count);
 			let func = code[ip + 2];
@@ -1845,13 +1842,6 @@ function ml_frame_debug_run(self, result) {
 			self.line = code[ip + 1];
 			return ml_call(self, func, args);
 		}
-		case MLI_TAIL_CALL_CONST:
-		case MLI_TAIL_CALL_METHOD: {
-			let count = code[ip + 3];
-			let args = stack.splice(stack.length - count, count);
-			let func = code[ip + 2];
-			return ml_call(self.caller, func, args);
-		}
 		case MLI_TAIL_CALL_CONST_0:
 		case MLI_TAIL_CALL_CONST_1:
 		case MLI_TAIL_CALL_CONST_2:
@@ -1865,7 +1855,10 @@ function ml_frame_debug_run(self, result) {
 			let count = code[ip] - MLI_TAIL_CALL_CONST_0;
 			let args = stack.splice(stack.length - count, count);
 			let func = code[ip + 2];
-			return ml_call(self.caller, func, args);
+			let next = ip + 3;
+			self.ip = next;
+			self.line = code[ip + 1];
+			return ml_call(self, func, args);
 		}
 		case MLI_TAIL_CALL_METHOD_0:
 		case MLI_TAIL_CALL_METHOD_1:
@@ -1880,7 +1873,10 @@ function ml_frame_debug_run(self, result) {
 			let count = code[ip] - MLI_TAIL_CALL_METHOD_0;
 			let args = stack.splice(stack.length - count, count);
 			let func = code[ip + 2];
-			return ml_call(self.caller, func, args);
+			let next = ip + 3;
+			self.ip = next;
+			self.line = code[ip + 1];
+			return ml_call(self, func, args);
 		}
 		}
 	}
