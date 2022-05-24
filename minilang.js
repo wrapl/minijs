@@ -2192,6 +2192,9 @@ ml_method_define("*", [MLNumberT, MLNumberT], false, function(caller, args) {
 ml_method_define("/", [MLNumberT, MLNumberT], false, function(caller, args) {
 	ml_resume(caller, args[0] / args[1]);
 });
+ml_method_define("%", [MLNumberT, MLNumberT], false, function(caller, args) {
+	ml_resume(caller, args[0] % args[1]);
+});
 
 ml_method_define("<", [MLNumberT, MLNumberT], false, function(caller, args) {
 	ml_resume(caller, args[0] < args[1] ? args[1] : null);
