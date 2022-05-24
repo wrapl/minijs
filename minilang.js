@@ -2109,6 +2109,19 @@ ml_method_define("=", [MLAnyT, MLAnyT], false, function(caller, args) {
 ml_method_define("!=", [MLAnyT, MLAnyT], false, function(caller, args) {
 	ml_resume(caller, args[0] !== args[1] ? args[1] : null);
 });
+ml_method_define("<", [MLAnyT, MLAnyT], false, function(caller, args) {
+	ml_resume(caller, args[0] < args[1] ? args[1] : null);
+});
+ml_method_define(">", [MLAnyT, MLAnyT], false, function(caller, args) {
+	ml_resume(caller, args[0] > args[1] ? args[1] : null);
+});
+ml_method_define("<=", [MLAnyT, MLAnyT], false, function(caller, args) {
+	ml_resume(caller, args[0] <= args[1] ? args[1] : null);
+});
+ml_method_define(">=", [MLAnyT, MLAnyT], false, function(caller, args) {
+	ml_resume(caller, args[0] >= args[1] ? args[1] : null);
+});
+
 
 ml_method_define("->", [MLFunctionT, MLFunctionT], false, function(caller, args) {
 	ml_resume(caller, ml_chained([args[0], args[1]]));
@@ -2196,18 +2209,6 @@ ml_method_define("%", [MLNumberT, MLNumberT], false, function(caller, args) {
 	ml_resume(caller, args[0] % args[1]);
 });
 
-ml_method_define("<", [MLNumberT, MLNumberT], false, function(caller, args) {
-	ml_resume(caller, args[0] < args[1] ? args[1] : null);
-});
-ml_method_define(">", [MLNumberT, MLNumberT], false, function(caller, args) {
-	ml_resume(caller, args[0] > args[1] ? args[1] : null);
-});
-ml_method_define("<=", [MLNumberT, MLNumberT], false, function(caller, args) {
-	ml_resume(caller, args[0] <= args[1] ? args[1] : null);
-});
-ml_method_define(">=", [MLNumberT, MLNumberT], false, function(caller, args) {
-	ml_resume(caller, args[0] >= args[1] ? args[1] : null);
-});
 ml_method_define("..", [MLNumberT, MLNumberT], false, function(caller, args) {
 	ml_resume(caller, ml_value(MLRangeT, {min: args[0], max: args[1], step: 1}));
 });
