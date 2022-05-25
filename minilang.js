@@ -2564,6 +2564,53 @@ ml_method_define("length", [MLListT], false, function(caller, args) {
 ml_method_define("count", [MLListT], false, function(caller, args) {
 	ml_resume(caller, args[0].length);
 });
+
+function ml_list_sort_run(state, value) {
+	if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, value);
+	let list = state.list, i = state.i, j = state.j, k;
+	if (value !== null) {
+		list[i++] = state.t;
+		k = state.i = i;
+	} else {
+		list[j--] = state.t;
+		k = state.j = j;
+	}
+	if (i < j) {
+		let t = state.t = list[k];
+		return ml_call(state, state.compare, [t, state.p]);
+	}
+	list[k] = state.p;
+	let a = state.a, b = state.b, stack = state.stack;
+	if (a < i - 1) stack.push(a, i - 1);
+	if (j + 1 < b) stack.push(j + 1, b);
+	if (!stack.length) return ml_resume(state.caller, list);
+	b = state.b = stack.pop();
+	a = state.a = stack.pop();
+	state.p = list[state.j = b];
+	state.t = list[state.i = a];
+	return ml_call(state, state.compare, [state.t, state.p]);
+}
+ml_method_define("sort", [MLListT], false, function(caller, args) {
+	let list = args[0];
+	if (!list.length) return ml_resume(caller, list);
+	let compare = ml_method("<");
+	let a = 0, b = list.length - 1;
+	let i = a, j = b;
+	let p = list[i], t = list[j];
+	let state = {caller, list, compare, a, b, i, j, p, t, stack: [], run: ml_list_sort_run};
+	return ml_call(state, compare, [t, p]);
+});
+ml_method_define("sort", [MLListT, MLFunctionT], false, function(caller, args) {
+	let list = args[0];
+	if (!list.length) return ml_resume(caller, list);
+	let compare = args[1];
+	let a = 0, b = list.length - 1;
+	let i = a, j = b;
+	let p = list[i], t = list[j];
+	let state = {caller, list, compare, a, b, i, j, p, t, stack: [], run: ml_list_sort_run};
+	return ml_call(state, compare, [t, p]);
+});
+
 ml_method_define("append", [MLStringBufferT, MLListT], false, function(caller, args) {
 	let buffer = args[0];
 	let list = args[1];
