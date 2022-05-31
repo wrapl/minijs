@@ -695,7 +695,7 @@ const MLFrameT = ml_type("frame", [MLFunctionT], {
 	}
 });
 
-const ML_BYTECODE_VERSION = 2;
+const ML_BYTECODE_VERSION = 3;
 
 const MLI_AND = 0;
 const MLI_ASSIGN = 1;
@@ -724,39 +724,39 @@ const MLI_CALL_METHOD_7 = 23;
 const MLI_CALL_METHOD_8 = 24;
 const MLI_CALL_METHOD_9 = 25;
 const MLI_CATCH = 26;
-const MLI_CATCH_TYPE = 27;
-const MLI_CLOSURE = 28;
-const MLI_CLOSURE_TYPED = 29;
-const MLI_ENTER = 30;
-const MLI_EXIT = 31;
-const MLI_FOR = 32;
-const MLI_GOTO = 33;
-const MLI_IF_DEBUG = 34;
-const MLI_ITER = 35;
-const MLI_KEY = 36;
-const MLI_LET = 37;
-const MLI_LETI = 38;
-const MLI_LETX = 39;
-const MLI_LINK = 40;
-const MLI_LIST_APPEND = 41;
-const MLI_LIST_NEW = 42;
-const MLI_LOAD = 43;
-const MLI_LOAD_PUSH = 44;
-const MLI_LOAD_VAR = 45;
-const MLI_LOCAL = 46;
-const MLI_LOCALI = 47;
-const MLI_LOCAL_PUSH = 48;
-const MLI_MAP_INSERT = 49;
-const MLI_MAP_NEW = 50;
-const MLI_NEXT = 51;
-const MLI_NIL = 52;
-const MLI_NIL_PUSH = 53;
-const MLI_NOT = 54;
-const MLI_OR = 55;
-const MLI_PARAM_TYPE = 56;
-const MLI_PARTIAL_NEW = 57;
-const MLI_PARTIAL_SET = 58;
-const MLI_POP = 59;
+const MLI_CLOSURE = 27;
+const MLI_CLOSURE_TYPED = 28;
+const MLI_ENTER = 29;
+const MLI_EXIT = 30;
+const MLI_FOR = 31;
+const MLI_GOTO = 32;
+const MLI_IF_DEBUG = 33;
+const MLI_ITER = 34;
+const MLI_KEY = 35;
+const MLI_LET = 36;
+const MLI_LETI = 37;
+const MLI_LETX = 38;
+const MLI_LINK = 39;
+const MLI_LIST_APPEND = 40;
+const MLI_LIST_NEW = 41;
+const MLI_LOAD = 42;
+const MLI_LOAD_PUSH = 43;
+const MLI_LOAD_VAR = 44;
+const MLI_LOCAL = 45;
+const MLI_LOCALI = 46;
+const MLI_LOCAL_PUSH = 47;
+const MLI_MAP_INSERT = 48;
+const MLI_MAP_NEW = 49;
+const MLI_NEXT = 50;
+const MLI_NIL = 51;
+const MLI_NIL_PUSH = 52;
+const MLI_NOT = 53;
+const MLI_OR = 54;
+const MLI_PARAM_TYPE = 55;
+const MLI_PARTIAL_NEW = 56;
+const MLI_PARTIAL_SET = 57;
+const MLI_POP = 58;
+const MLI_POPX = 59;
 const MLI_PUSH = 60;
 const MLI_REF = 61;
 const MLI_REFI = 62;
@@ -1003,19 +1003,6 @@ function ml_frame_run(self, result) {
 			self.ep = code[ip + 2];
 			ip += 3;
 			break;
-		case MLI_CATCH_TYPE:
-			if (ml_typeof(result) !== MLErrorT) {
-				result = ml_error("InternalError", `expected error, not ${ml_typeof(result).name}`);
-				ml_error_trace_add(result, self.source, code[ip + 1]);
-				ip = self.ep;
-			} else {
-				if (code[ip + 3].indexOf(ml_typeof(result)) === -1) {
-					ip = code[ip + 2];
-				} else {
-					ip += 4;
-				}
-			}
-			break;
 		case MLI_CATCH:
 			self.ep = code[ip + 2];
 			if (ml_typeof(result) !== MLErrorT) {
@@ -1027,6 +1014,19 @@ function ml_frame_run(self, result) {
 				let top = code[ip + 3];
 				while (stack.length > top) stack.pop();
 				stack.push(result);
+				ip += 5;
+			}
+			break;
+		case MLI_POPX:
+			self.ep = code[ip + 2];
+			if (ml_typeof(result) !== MLErrorT) {
+				result = ml_error("InternalError", `expected error, not ${ml_typeof(result).name}`);
+				ml_error_trace_add(result, self.source, code[ip + 1]);
+				ip = self.ep;
+			} else {
+				result = ml_error_value(result);
+				let top = code[ip + 3];
+				while (stack.length > top) stack.pop();
 				ip += 5;
 			}
 			break;
