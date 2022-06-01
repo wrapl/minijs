@@ -1024,7 +1024,6 @@ function ml_frame_run(self, result) {
 				ml_error_trace_add(result, self.source, code[ip + 1]);
 				ip = self.ep;
 			} else {
-				result = ml_error_value(result);
 				let top = code[ip + 3];
 				while (stack.length > top) stack.pop();
 				ip += 5;
@@ -1506,19 +1505,6 @@ function ml_frame_debug_run(self, result) {
 			self.ep = code[ip + 2];
 			ip += 3;
 			break;
-		case MLI_CATCH_TYPE:
-			if (ml_typeof(result) !== MLErrorT) {
-				result = ml_error("InternalError", `expected error, not ${ml_typeof(result).name}`);
-				ml_error_trace_add(result, self.source, code[ip + 1]);
-				ip = self.ep;
-			} else {
-				if (code[ip + 3].indexOf(ml_typeof(result)) === -1) {
-					ip = code[ip + 2];
-				} else {
-					ip += 4;
-				}
-			}
-			break;
 		case MLI_CATCH:
 			self.ep = code[ip + 2];
 			if (ml_typeof(result) !== MLErrorT) {
@@ -1530,6 +1516,19 @@ function ml_frame_debug_run(self, result) {
 				let top = code[ip + 3];
 				while (stack.length > top) stack.pop();
 				stack.push(result);
+				self.decl = self.decls[code[ip + 4]];
+				ip += 5;
+			}
+			break;
+		case MLI_CATCHX:
+			self.ep = code[ip + 2];
+			if (ml_typeof(result) !== MLErrorT) {
+				result = ml_error("InternalError", `expected error, not ${ml_typeof(result).name}`);
+				ml_error_trace_add(result, self.source, code[ip + 1]);
+				ip = self.ep;
+			} else {
+				let top = code[ip + 3];
+				while (stack.length > top) stack.pop();
 				self.decl = self.decls[code[ip + 4]];
 				ip += 5;
 			}
