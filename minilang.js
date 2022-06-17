@@ -211,7 +211,7 @@ export const MLMethodT = ml_type("method", [MLFunctionT], {
 		return ml_call(caller, func, args);
 
 		function score_definition(types, args) {
-			let score = 0;
+			let score = 1;
 			for (let i = 0; i < types.length; ++i) {
 				let type = types[i];
 				if (ml_typeof(args[i]).parents.indexOf(type) === -1) return -1;
@@ -2948,6 +2948,24 @@ ml_method_define("append", [MLStringBufferT, MLArrayT], false, function(caller, 
 	ml_array_append(buffer, array, 0, array.offset);
 	ml_resume(caller, buffer);
 });
+
+export const MLTimeT = ml_type("time");
+Object.defineProperty(Date.prototype, "ml_type", {value: MLTimeT});
+
+ml_method_define(MLTimeT, [], false, function(caller, args) {
+	ml_resume(caller, new Date());
+});
+ml_method_define(MLTimeT, [MLStringT], false, function(caller, args) {
+	ml_resume(caller, new Date(args[0]));
+});
+ml_method_define("append", [MLStringBufferT, MLTimeT], false, function(caller, args) {
+	let buffer = args[0];
+	let time = args[1];
+	buffer.string += time.toString();
+	ml_resume(caller, buffer);
+});
+
+window.Globals = Globals;
 
 export function ml_decode(value, cache) {
 	switch (typeof(value)) {

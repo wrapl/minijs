@@ -41,6 +41,8 @@ let Encoder := jsencoder()
 for Name, Value in globals() do
 	Encoder:add(Value, Name)
 end
+Encoder:add(std::time, "time")
+Encoder:add(std::uuid, "uuid")
 
 Root:add("compile"; Request, Response) do
 	let Parser := parser()
