@@ -2961,7 +2961,7 @@ ml_method_define(MLTimeT, [MLStringT], false, function(caller, args) {
 ml_method_define("append", [MLStringBufferT, MLTimeT], false, function(caller, args) {
 	let buffer = args[0];
 	let time = args[1];
-	buffer.string += time.toString();
+	buffer.string += time.toISOString();
 	ml_resume(caller, buffer);
 });
 
