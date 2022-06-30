@@ -1,6 +1,7 @@
 const Trampolines = [];
 const MethodsCache = {};
 export const Globals = {};
+export const Types = {};
 
 const EndState = {run: function(_, value) {
 	console.log("Result: ", value);
@@ -120,7 +121,7 @@ export function ml_type(name, parents, methods) {
 	type.rank = rank + 1;
 	type.exports = {};
 	type.prototype = {ml_type: type};
-	Globals[name] = type;
+	Types[name] = type;
 	return type;
 }
 
@@ -2967,6 +2968,19 @@ ml_method_define("append", [MLStringBufferT, MLTimeT], false, function(caller, a
 
 window.Globals = Globals;
 
+function ml_decode_global(name) {
+	let value = Globals[name];
+	if (value !== undefined) return value;
+	let index = name.lastIndexOf("::");
+	if (index !== -1) {
+		let parent = ml_decode_global(name.substring(0, index));
+		if (parent && parent.exports) {
+			return parent.exports[name.substring(index + 2)];
+		}
+	}
+	return undefined;
+}
+
 export function ml_decode(value, cache) {
 	switch (typeof(value)) {
 	case 'boolean': return value;
@@ -3031,6 +3045,10 @@ export function ml_decode(value, cache) {
 				}
 				return map;
 			}
+			case 't':
+			case 'type': {
+				return Types[value[1]];
+			}
 			case 'global': return ml_global(ml_decode(value[1], cache));
 			case 'z':
 			case 'closure': {
@@ -3055,7 +3073,7 @@ export function ml_decode(value, cache) {
 				value[14] = decls;
 				return value;
 			}
-			case '^': return Globals[value[1]];
+			case '^': return ml_decode_global(value[1]);
 			case "array": {
 				let array = ml_array(value[1], value[2]);
 				if (value[1] === "int64" || value[1] === "uint64") {

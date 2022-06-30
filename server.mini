@@ -37,16 +37,22 @@ Root:add("test.js"; Request, Response) do
 	Response:flush
 end
 
-let Encoder := jsencoder()
-for Name, Value in globals() do
+let Encoder := util::jsencoder()
+:<for Name, Value in globals() do
 	Encoder:add(Value, Name)
 end
 Encoder:add(std::time, "time")
-Encoder:add(std::uuid, "uuid")
+Encoder:add(std::uuid, "uuid")>:
+
+let Globals := map(globals()):grow({
+	"print" is external("print")
+})
+
+print('Globals = {Globals}\n')
 
 Root:add("compile"; Request, Response) do
 	let Parser := parser()
-	let Compiler := compiler(global)
+	let Compiler := compiler(Globals)
 	let Input := Request:get_post("input")
 	print("Input = ", Input, "\n")
 	Parser:input(Input)
