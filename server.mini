@@ -1,4 +1,5 @@
 import: onion("web/onion")
+import: minijs("fmt/minijs")
 def connection_status := onion::connection_status
 
 var Onion := onion()
@@ -37,13 +38,6 @@ Root:add("test.js"; Request, Response) do
 	Response:flush
 end
 
-let Encoder := util::jsencoder()
-:<for Name, Value in globals() do
-	Encoder:add(Value, Name)
-end
-Encoder:add(std::time, "time")
-Encoder:add(std::uuid, "uuid")>:
-
 let Globals := map(globals()):grow({
 	"print" is external("print")
 })
@@ -60,7 +54,7 @@ Root:add("compile"; Request, Response) do
 		let Function := Parser:compile(Compiler)
 		Response:set_code(200)
 		Response:set_header("Content-Type", "application/json")
-		Response:write(Encoder:encode(Function))
+		Response:write(minijs::encode(Function))
 	on Error do
 		Response:set_code(400)
 		Response:set_header("Content-Type", "text/plain")
