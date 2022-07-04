@@ -1,15 +1,17 @@
-def onion := import("../Minilang/lib/ml_onion.so")
+import: onion("web/onion")
+import: minijs("fmt/minijs")
 def connection_status := onion::connection_status
 
-var Onion := onion::new()
+var Onion := onion()
 var Root := Onion:root_url
 
 Root:add(""; Request, Response) do
 	print("Path = ", Request:get_path, "\n")
 	print("Full Path = ", Request:get_fullpath, "\n")
 	let File := file("index.xhtml", "r")
+	Response:set_code(200)
 	Response:set_header("Content-Type", "application/xhtml+xml")
-	Response:write(File:read(10000000))
+	Response:write(File:rest)
 	File:close
 	Response:flush
 end
@@ -18,8 +20,9 @@ Root:add("minilang.js"; Request, Response) do
 	print("Path = ", Request:get_path, "\n")
 	print("Full Path = ", Request:get_fullpath, "\n")
 	let File := file("minilang.js", "r")
+	Response:set_code(200)
 	Response:set_header("Content-Type", "text/javascript")
-	Response:write(File:read(10000000))
+	Response:write(File:rest)
 	File:close
 	Response:flush
 end
@@ -28,31 +31,36 @@ Root:add("test.js"; Request, Response) do
 	print("Path = ", Request:get_path, "\n")
 	print("Full Path = ", Request:get_fullpath, "\n")
 	let File := file("test.js", "r")
+	Response:set_code(200)
 	Response:set_header("Content-Type", "text/javascript")
-	Response:write(File:read(10000000))
+	Response:write(File:rest)
 	File:close
 	Response:flush
 end
 
-let Encoder := jsencoder()
-for Name, Value in globals() do
-	Encoder:add(Value, Name)
-end
+let Globals := map(globals()):grow({
+	"print" is external("print")
+})
+
+print('Globals = {Globals}\n')
 
 Root:add("compile"; Request, Response) do
-	let Compiler := compiler(global)
+	let Parser := parser()
+	let Compiler := compiler(Globals)
 	let Input := Request:get_post("input")
 	print("Input = ", Input, "\n")
-	Compiler:input(Input)
+	Parser:input(Input)
 	do
-		let Function := Compiler:compile
-		Response:write(Encoder:encode(Function))
+		let Function := Parser:compile(Compiler)
+		Response:set_code(200)
+		Response:set_header("Content-Type", "application/json")
+		Response:write(minijs::encode(Function))
 	on Error do
 		Response:set_code(400)
 		Response:set_header("Content-Type", "text/plain")
 		Response:write('{Error:type}\n')
 		Response:write('{Error:message}\n')
-		for (Source, Line) in Response:trace do
+		for (Source, Line) in Error:trace do
 			Response:write('\t{Source}:{Line}\n')
 		end
 	end
@@ -60,4 +68,5 @@ Root:add("compile"; Request, Response) do
 end
 
 Onion:set_port("9001")
+print("Listening on http://localhost:9001\n")
 Onion:listen

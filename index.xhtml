@@ -2,18 +2,147 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 	<meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
-	<script src="/minilang.js"/>
 </head>
-<body>
-<textarea id="input"/>
+<body style="font-family:monospace;font-size:16px;">
+<textarea id="input" style="width:100%;height:300px;font-size:16px;tab-size:4;"/>
 <br/>
-<button id="compile">Compile</button>
+<button id="compile" style="font-size:16px;">Compile</button>
 <br/>
 <div id="compiled"/>
-<button id="execute">Execute</button>
+<label>Debug: <input type="checkbox" id="debug" autocomplete="off"/></label>
+<button id="execute" style="font-size:16px;">Execute</button>
 <br/>
+<div id="debugger">
+	<div>
+		<button id="debugger-step-in">Step In</button>
+		<button id="debugger-step-over">Step Over</button>
+		<button id="debugger-continue">Continue</button>
+	</div>
+	<ol id="debugger-frames"/>
+</div>
 <pre id="console"/>
 <div id="output"/>
-<script src="/test.js"/>
+<script type="module">
+import { Globals, ml_call, ml_resume, ml_decode, MLNil, MLStringT, ml_debug, ml_deref } from './minilang.js';
+
+let inputElement = document.getElementById("input");
+let bytecodeElement = document.getElementById("compiled");
+let consoleElement = document.getElementById("console");
+let debuggerElement = document.getElementById("debugger");
+let framesElement = document.getElementById("debugger-frames");
+let outputElement = document.getElementById("output");
+let debugElement = document.getElementById("debug");
+let compileElement = document.getElementById("compile");
+let executeElement = document.getElementById("execute");
+
+inputElement.onkeydown = function(event) {
+	if (event.keyCode === 9) {
+		event.preventDefault();
+		inputElement.setRangeText('	', inputElement.selectionStart, inputElement.selectionStart, 'end');
+	}
+}
+
+Globals.print = function(caller, args) {
+	if (args.length === 0) return ml_resume(caller, MLNil);
+	let state = {caller, index: 1, run: function(self, value) {
+		consoleElement.appendChild(document.createTextNode(value.toString()));
+		if (self.index === args.length) return ml_resume(self.caller, MLNil);
+		ml_call(self, MLStringT.of, [args[self.index++]]);
+	}};
+	ml_call(state, MLStringT.of, [args[0]]);
+}
+
+compileElement.onclick = function() {
+	let request = new XMLHttpRequest();
+	request.onreadystatechange = function() {
+		if (request.readyState === XMLHttpRequest.DONE) {
+			if (request.status === 200) {
+				let json = request.responseText;
+				bytecodeElement.textContent = json;
+				window.main = ml_decode(JSON.parse(json), []);
+			}
+		}
+	}
+	bytecodeElement.textContext = "";
+	request.open('POST', '/compile');
+	request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+	request.send('input=' + encodeURIComponent(input.value));
+}
+
+let breakpoints = {};
+let debug = {
+	run: debugger_run,
+	breakpoints: function(source) {
+		return breakpoints[source] || (breakpoints[source] = []);
+	}
+};
+
+executeElement.onclick = function() {
+	if (debugElement.checked) {
+		debug.step_in = true;
+		ml_debug(debug);
+	} else {
+		ml_debug(null);
+	}
+	consoleElement.textContent = "";
+	ml_call(null, window.main, []);
+}
+
+let debugee = null;
+
+function debugger_run(state, value) {
+	console.log("debug", state, value);
+	while (framesElement.firstChild) framesElement.removeChild(framesElement.firstChild);
+	for (let s = state; s; s = s.caller) {
+		if (s.source !== undefined) {
+			let frameElement = document.createElement("li");
+			frameElement.textContent = s.source + ":" + s.line;
+			let localsElement = document.createElement("ul");
+			frameElement.appendChild(localsElement);
+			for (let decl = s.decl; decl; decl = decl.next) {
+				let localElement = document.createElement("li");
+				let value = s.stack[decl.index] || "?";
+				value = ml_deref(value) || "nil";
+				localElement.textContent = decl.name + " = " + value.toString();
+				localsElement.appendChild(localElement);
+			}
+			framesElement.appendChild(frameElement);
+		}
+	}
+	debugee = {state, value};
+}
+
+function debugger_continue(state, value, step_in, step_over) {
+	while (framesElement.firstChild) framesElement.removeChild(framesElement.firstChild);
+	debug.step_in = step_in;
+	state.step_over = step_over;
+	ml_resume(state, value);
+}
+
+document.getElementById("debugger-step-in").onclick = function() {
+	if (debugee) {
+		let d = debugee;
+		debugee = null;
+		debugger_continue(d.state, d.value, true, false);
+	}
+}
+
+document.getElementById("debugger-step-over").onclick = function() {
+	if (debugee) {
+		let d = debugee;
+		debugee = null;
+		debugger_continue(d.state, d.value, false, true);
+	}
+}
+
+document.getElementById("debugger-continue").onclick = function() {
+	if (debugee) {
+		let d = debugee;
+		debugee = null;
+		debugger_continue(d.state, d.value, false, false);
+	}
+}
+
+</script>
 </body>
 </html>
