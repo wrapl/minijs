@@ -2683,16 +2683,10 @@ ml_method_define("delete", [MLMapT, MLAnyT], false, function(caller, args) {
 	ml_resume(caller, ml_map_delete(args[0], args[1]));
 });
 ml_method_define("size", [MLMapT], false, function(caller, args) {
-	let map = args[0];
-	let count = 0;
-	for (let hash in map.nodes) count += map.nodes[hash].length;
-	ml_resume(caller, count);
+	ml_resume(caller, args[0].size);
 });
 ml_method_define("count", [MLMapT], false, function(caller, args) {
-	let map = args[0];
-	let count = 0;
-	for (let hash in map.nodes) count += map.nodes[hash].length;
-	ml_resume(caller, count);
+	ml_resume(caller, args[0].size);
 });
 ml_method_define("append", [MLStringBufferT, MLMapT], false, function(caller, args) {
 	let buffer = args[0];
