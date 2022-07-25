@@ -1,7 +1,6 @@
 const Trampolines = [];
 const MethodsCache = {};
 export const Globals = {};
-export const Types = {};
 
 const EndState = {run: function(_, value) {
 	console.log("Result: ", value);
@@ -88,7 +87,7 @@ const DefaultMethods = {
 	}
 };
 
-export const MLTypeT = {
+export const MLTypeT = Globals["type"] = {
 	name: "type",
 	prototype: {},
 	rank: 2,
@@ -121,7 +120,6 @@ export function ml_type(name, parents, methods) {
 	type.rank = rank + 1;
 	type.exports = {};
 	type.prototype = {ml_type: type};
-	Types[name] = type;
 	return type;
 }
 
@@ -137,14 +135,14 @@ export function ml_is(value, type) {
 	return false;
 }
 
-export const MLAnyT = ml_type("any");
+export const MLAnyT = Globals["any"] = ml_type("any");
 MLTypeT.parents = [MLTypeT, MLAnyT];
 
 export function ml_identity(caller, args) {
 	ml_resume(caller, args[0]);
 }
 
-export const MLFunctionT = ml_type("function");
+export const MLFunctionT = Globals["function"] = ml_type("function");
 export const MLIteratableT = ml_type("iteratable");
 
 export const MLNilT = ml_type("nil", [], {
@@ -155,14 +153,14 @@ export const MLNilT = ml_type("nil", [], {
 export const MLNil = null;
 
 export const MLSomeT = ml_type("some");
-export const MLSome = ml_value(MLSomeT);
+export const MLSome = Globals["some"] = ml_value(MLSomeT);
 
 export const MLBlankT = ml_type("blank", [], {
 	ml_assign: function(_, value) { return value; }
 });
 export const MLBlank = ml_value(MLBlankT);
 
-export const MLErrorT = ml_type("error");
+export const MLErrorT = Globals["error"] = ml_type("error");
 export function ml_error(type, message) {
 	return ml_value(MLErrorT, {type, message, stack: []});
 }
@@ -178,7 +176,7 @@ export function ml_error_value(error) {
 	return ml_value(MLErrorValueT, {type, message, stack});
 }
 
-export const MLMethodT = ml_type("method", [MLFunctionT], {
+export const MLMethodT = Globals["method"] = ml_type("method", [MLFunctionT], {
 	ml_hash: function(self) { return ":" + self.name; },
 	ml_call: function(caller, self, args) {
 		let signature = "";
@@ -250,10 +248,10 @@ let appendMethod = ml_method("append");
 let callMethod = ml_method("()");
 let symbolMethod = ml_method("::");
 
-export const MLBooleanT = ml_type("boolean");
+export const MLBooleanT = Globals["boolean"] = ml_type("boolean");
 Object.defineProperty(Boolean.prototype, "ml_type", {value: MLBooleanT});
 
-export const MLNumberT = ml_type("number", [MLFunctionT], {
+export const MLNumberT = Globals["number"] = ml_type("number", [MLFunctionT], {
 	ml_call: function(caller, self, args) {
 		let index = self - 1;
 		if (index < 0) index += args.length + 1;
@@ -299,10 +297,10 @@ export const MLRangeT = ml_type("range", [MLIteratableT], {
 	}
 });
 
-export const MLStringT = ml_type("string", [MLIteratableT]);
+export const MLStringT = Globals["string"] = ml_type("string", [MLIteratableT]);
 Object.defineProperty(String.prototype, "ml_type", {value: MLStringT});
 
-export const MLRegexT = ml_type("regex", []);
+export const MLRegexT = Globals["regex"] = ml_type("regex", []);
 Object.defineProperty(RegExp.prototype, "ml_type", {value: MLRegexT});
 
 const MLJSFunctionT = ml_type("function", [MLFunctionT], {
@@ -474,7 +472,7 @@ export function ml_chained(entries) {
 	return ml_value(MLChainedFunctionT, {entries});
 }
 
-export const MLTupleT = ml_type("tuple", [], {
+export const MLTupleT = Globals["tuple"] = ml_type("tuple", [], {
 	ml_assign: function(self, values) {
 		let count = self.values.length;
 		for (let i = 0; i < count; ++i) {
@@ -516,7 +514,7 @@ const MLListNodeT = ml_type("list-node", [], {
 		ml_resume(caller, self);
 	}
 });
-export const MLListT = ml_type("list", [MLIteratableT], {
+export const MLListT = Globals["list"] = ml_type("list", [MLIteratableT], {
 	iterate: function(caller, self) {
 		if (!self.length) return ml_resume(caller, null);
 		ml_resume(caller, ml_value(MLListNodeT, {list: self, index: 0}));
@@ -565,7 +563,7 @@ const MLMapNodeT = ml_type("map-node", [], {
 		ml_resume(caller, self);
 	}
 });
-export const MLMapT = ml_type("map", [MLIteratableT], {
+export const MLMapT = Globals["map"] = ml_type("map", [MLIteratableT], {
 	iterate: function(caller, self) {
 		ml_resume(caller, self.head || null);
 	}
@@ -1954,7 +1952,7 @@ function ml_array_assign(self, value) {
 	}
 }
 
-export const MLArrayT = ml_type("array");
+export const MLArrayT = Globals["array"] = ml_type("array");
 MLArrayT.exports.uint8 = ml_type("array::uint8", [MLArrayT], {
 	base: Uint8Array, index: 1,
 	ml_deref: ml_array_deref,
@@ -3050,10 +3048,6 @@ export function ml_decode(value, cache) {
 					map.insert(ml_decode(value[i], cache), ml_decode(value[i + 1], cache));
 				}
 				return map;
-			}
-			case 't':
-			case 'type': {
-				return Types[value[1]];
 			}
 			case 'global': return ml_global(ml_decode(value[1], cache));
 			case 'z':
