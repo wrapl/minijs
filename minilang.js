@@ -647,7 +647,11 @@ const MLVariableT = ml_type("variable", [], {
 	ml_assign: function(self, value) { return self.value = value; }
 });
 
-const MLUninitializedT = ml_type("uninitialized");
+const MLUninitializedT = ml_type("uninitialized", [], {
+	ml_call: function(caller, self, args) {
+		ml_resume(caller, ml_error("ValueError", self.name + " is uninitialized"));
+	}
+});
 function ml_uninitialized(name) {
 	return ml_value(MLUninitializedT, {name, uses: []});
 }
