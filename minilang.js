@@ -2982,7 +2982,7 @@ function ml_decode_global(name) {
 			return parent.exports[name.substring(index + 2)];
 		}
 	}
-	return undefined;
+	return ml_uninitialized(name);
 }
 
 export function ml_decode(value, cache) {
