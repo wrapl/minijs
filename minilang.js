@@ -698,7 +698,7 @@ const MLFrameT = ml_type("frame", [MLFunctionT], {
 	}
 });
 
-const ML_BYTECODE_VERSION = 4;
+const ML_BYTECODE_VERSION = 5;
 
 const MLI_AND = 0;
 const MLI_ASSIGN = 1;
@@ -733,43 +733,43 @@ const MLI_MAP_INSERT = 29;
 const MLI_MAP_NEW = 30;
 const MLI_NEXT = 31;
 const MLI_NIL = 32;
-const MLI_NIL_PUSH = 33;
-const MLI_NOT = 34;
-const MLI_OR = 35;
-const MLI_PARAM_TYPE = 36;
-const MLI_PARTIAL_NEW = 37;
-const MLI_PARTIAL_SET = 38;
-const MLI_POP = 39;
-const MLI_PUSH = 40;
-const MLI_REF = 41;
-const MLI_REFI = 42;
-const MLI_REFX = 43;
-const MLI_RESOLVE = 44;
-const MLI_RESUME = 45;
-const MLI_RETRY = 46;
-const MLI_RETURN = 47;
-const MLI_STRING_ADD = 48;
-const MLI_STRING_ADDS = 49;
-const MLI_STRING_ADD_1 = 50;
-const MLI_STRING_END = 51;
-const MLI_STRING_NEW = 52;
-const MLI_STRING_POP = 53;
-const MLI_SUSPEND = 54;
-const MLI_SWITCH = 55;
-const MLI_TAIL_CALL = 56;
-const MLI_TAIL_CALL_CONST = 57;
-const MLI_TAIL_CALL_METHOD = 58;
-const MLI_TRY = 59;
-const MLI_TUPLE_NEW = 60;
-const MLI_UPVALUE = 61;
-const MLI_VALUE_1 = 62;
-const MLI_VALUE_2 = 63;
-const MLI_VAR = 64;
-const MLI_VARX = 65;
-const MLI_VAR_TYPE = 66;
-const MLI_WITH = 67;
-const MLI_WITHX = 68;
-
+const MLI_NIL_CHECK = 33;
+const MLI_NIL_PUSH = 34;
+const MLI_NOT = 35;
+const MLI_OR = 36;
+const MLI_PARAM_TYPE = 37;
+const MLI_PARTIAL_NEW = 38;
+const MLI_PARTIAL_SET = 39;
+const MLI_POP = 40;
+const MLI_PUSH = 41;
+const MLI_REF = 42;
+const MLI_REFI = 43;
+const MLI_REFX = 44;
+const MLI_RESOLVE = 45;
+const MLI_RESUME = 46;
+const MLI_RETRY = 47;
+const MLI_RETURN = 48;
+const MLI_STRING_ADD = 49;
+const MLI_STRING_ADDS = 50;
+const MLI_STRING_ADD_1 = 51;
+const MLI_STRING_END = 52;
+const MLI_STRING_NEW = 53;
+const MLI_STRING_POP = 54;
+const MLI_SUSPEND = 55;
+const MLI_SWITCH = 56;
+const MLI_TAIL_CALL = 57;
+const MLI_TAIL_CALL_CONST = 58;
+const MLI_TAIL_CALL_METHOD = 59;
+const MLI_TRY = 60;
+const MLI_TUPLE_NEW = 61;
+const MLI_UPVALUE = 62;
+const MLI_VALUE_1 = 63;
+const MLI_VALUE_2 = 64;
+const MLI_VAR = 65;
+const MLI_VARX = 66;
+const MLI_VAR_TYPE = 67;
+const MLI_WITH = 68;
+const MLI_WITHX = 69;
 
 let ml_debugger = null;
 
@@ -1086,6 +1086,16 @@ function ml_frame_run(self, result) {
 			self.line = code[ip + 1];
 			self.ip = ip + 2;
 			return ml_iter_key(self, result);
+		case MLI_NIL_CHECK: {
+			result = ml_deref(stack[stack.length - 1]);
+			if (result == null) {
+				for (let i = code[ip + 3]; --i >= 0;) stack.pop();
+				ip = code[ip + 2];
+			} else {
+				ip += 4;
+			}
+			break;
+		}
 		case MLI_CALL: {
 			let count = code[ip + 2];
 			let args = stack.splice(stack.length - count, count);
