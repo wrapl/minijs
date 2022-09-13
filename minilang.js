@@ -1534,6 +1534,16 @@ function ml_frame_debug_run(self, result) {
 			self.line = code[ip + 1];
 			self.ip = ip + 2;
 			return ml_iter_key(self, result);
+		case MLI_NIL_CHECK: {
+			result = ml_deref(stack[stack.length - 1]);
+			if (result == null) {
+				for (let i = code[ip + 3]; --i >= 0;) stack.pop();
+				ip = code[ip + 2];
+			} else {
+				ip += 4;
+			}
+			break;
+		}
 		case MLI_CALL:
 		case MLI_TAIL_CALL: {
 			let count = code[ip + 2];
