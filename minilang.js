@@ -146,6 +146,7 @@ export const MLFunctionT = Globals["function"] = ml_type("function");
 export const MLIteratableT = ml_type("iteratable");
 
 export const MLNilT = ml_type("nil", [], {
+	ml_hash: function(self) { return ""; },
 	unpack: function(self, index) {
 		return null;
 	}
