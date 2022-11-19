@@ -298,7 +298,31 @@ export const MLRangeT = ml_type("range", [MLIteratableT], {
 	}
 });
 
-export const MLStringT = Globals["string"] = ml_type("string", [MLIteratableT]);
+const MLStringIterT = ml_type("string-iter", [], {
+	iter_next: function(caller, self) {
+		if (self.pos >= self.string.length) {
+			ml_resume(caller, null);
+		} else {
+			self.pos += 1;
+			ml_resume(caller, self);
+		}
+	},
+	iter_key: function(caller, self) {
+		ml_resume(caller, self.pos);
+	},
+	iter_value: function(caller, self) {
+		ml_resume(caller, self.string.charAt(self.pos - 1));
+	}
+});
+export const MLStringT = Globals["string"] = ml_type("string", [MLIteratableT], {
+	iterate: function(caller, self) {
+		if (self.length) {
+			ml_resume(caller, ml_value(MLStringIterT, {string: self, pos: 1}));
+		} else {
+			ml_resume(caller, null);
+		}
+	}
+});
 Object.defineProperty(String.prototype, "ml_type", {value: MLStringT});
 
 export const MLRegexT = Globals["regex"] = ml_type("regex", []);
@@ -2408,6 +2432,9 @@ ml_method_define("length", [MLListT], false, function(caller, args) {
 ml_method_define("count", [MLListT], false, function(caller, args) {
 	ml_resume(caller, args[0].length);
 });
+ml_method_define("+", [MLListT, MLListT], false, function(caller, args) {
+	ml_resume(caller, args[0].concat(args[1]));
+});
 
 function ml_list_sort_run(state, value) {
 	if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, value);
@@ -2531,6 +2558,53 @@ ml_method_define("size", [MLMapT], false, function(caller, args) {
 });
 ml_method_define("count", [MLMapT], false, function(caller, args) {
 	ml_resume(caller, args[0].size);
+});
+ml_method_define("+", [MLMapT, MLMapT], false, function(caller, args) {
+	let map = ml_map();
+	for (let node = args[0].head; node; node = node.next) {
+		ml_map_insert(map, node.key, node.value);
+	}
+	for (let node = args[1].head; node; node = node.next) {
+		ml_map_insert(map, node.key, node.value);
+	}
+	ml_resume(caller, map);
+});
+ml_method_define("\\/", [MLMapT, MLMapT], false, function(caller, args) {
+	let map = ml_map();
+	for (let node = args[0].head; node; node = node.next) {
+		ml_map_insert(map, node.key, node.value);
+	}
+	for (let node = args[1].head; node; node = node.next) {
+		ml_map_insert(map, node.key, node.value);
+	}
+	ml_resume(caller, map);
+});
+ml_method_define("/", [MLMapT, MLMapT], false, function(caller, args) {
+	let map = ml_map();
+	for (let node = args[0].head; node; node = node.next) {
+		if (!ml_map_search(args[1], node.key)) {
+			ml_map_insert(map, node.key, node.value);
+		}
+	}
+	ml_resume(caller, map);
+});
+ml_method_define("*", [MLMapT, MLMapT], false, function(caller, args) {
+	let map = ml_map();
+	for (let node = args[1].head; node; node = node.next) {
+		if (ml_map_search(args[0], node.key)) {
+			ml_map_insert(map, node.key, node.value);
+		}
+	}
+	ml_resume(caller, map);
+});
+ml_method_define("/\\", [MLMapT, MLMapT], false, function(caller, args) {
+	let map = ml_map();
+	for (let node = args[1].head; node; node = node.next) {
+		if (ml_map_search(args[0], node.key)) {
+			ml_map_insert(map, node.key, node.value);
+		}
+	}
+	ml_resume(caller, map);
 });
 ml_method_define("append", [MLStringBufferT, MLMapT], false, function(caller, args) {
 	let buffer = args[0];
