@@ -2353,6 +2353,9 @@ ml_method_define("append", [MLStringBufferT, MLStringT], false, function(caller,
 	ml_resume(caller, args[0]);
 });
 
+ml_method_define("[]", [MLTupleT, MLNumberT], false, function(caller, args) {
+	ml_resume(caller, args[0].values[args[1] - 1]);
+});
 ml_method_define("append", [MLStringBufferT, MLTupleT], false, function(caller, args) {
 	let buffer = args[0];
 	let list = args[1].values;
@@ -2945,6 +2948,7 @@ export function ml_decode(value, cache) {
 			case 'regex': return new RegExp(value[1]);
 			case ':':
 			case 'method': return ml_method(value[1]);
+			case '()': return ml_value(MLTupleT, {values: value.slice(1)});
 			case 'l':
 			case 'list': {
 				let list = [];
