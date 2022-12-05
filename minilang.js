@@ -2895,7 +2895,7 @@ ml_method_define("append", [MLStringBufferT, MLTimeT], false, function(caller, a
 
 window.Globals = Globals;
 
-function ml_decode_global(name) {
+function ml_decode_global(name, source, line) {
 	let value = Globals[name];
 	if (value !== undefined) return value;
 	let index = name.lastIndexOf("::");
@@ -2905,7 +2905,8 @@ function ml_decode_global(name) {
 			return parent.exports[name.substring(index + 2)];
 		}
 	}
-	return ml_uninitialized(name);
+	throw `identifier ${name} not declared at ${source}:${line}`;
+	//return ml_uninitialized(name);
 }
 
 export function ml_decode(value, cache) {
@@ -2997,7 +2998,7 @@ export function ml_decode(value, cache) {
 				value[14] = decls;
 				return value;
 			}
-			case '^': return ml_decode_global(value[1]);
+			case '^': return ml_decode_global(value[1], value[2], value[3]);
 			case "array": {
 				let array = ml_array(value[1], value[2]);
 				if (value[1] === "int64" || value[1] === "uint64") {
