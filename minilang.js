@@ -2408,8 +2408,19 @@ ml_method_define("[]", [MLListT, MLNumberT], false, function(caller, args) {
 	let list = args[0];
 	let index = args[1] - 1;
 	if (index < 0) index += list.length + 1;
-	if (index < 0 || index >= list.length) return null;
+	if (index < 0 || index >= list.length) return ml_resume(caller, null);
 	ml_resume(caller, ml_value(MLListNodeT, {list, index}));
+});
+ml_method_define("[]", [MLListT, MLNumberT, MLNumberT], false, function(caller, args) {
+	let list = args[0];
+	let index1 = args[1] - 1;
+	if (index1 < 0) index1 += list.length + 1;
+	if (index1 < 0 || index1 >= list.length) return ml_resume(caller, null);
+	let index2 = args[2] - 1;
+	if (index2 < 0) index2 += list.length + 1;
+	if (index2 < 0 || index2 > list.length) return ml_resume(caller, null);
+	if (index1 >= index2) return ml_resume(caller, null);
+	ml_resume(caller, list.slice(index1, index2));
 });
 ml_method_define("push", [MLListT, MLAnyT], true, function(caller, args) {
 	let list = args[0];
