@@ -2058,7 +2058,17 @@ ml_method_define("append", [MLStringBufferT, MLBooleanT], false, function(caller
 
 ml_method_define(MLNumberT, [MLNumberT], false, ml_identity);
 ml_method_define(MLNumberT, [MLStringT], false, function(caller, args) {
-	ml_resume(caller, parseFloat(args[0]));
+	let string = args[0];
+	let result;
+	if (string === "") {
+		result = ml_error("ValueError", "Error parsing number");
+	} else if (string === "NaN") {
+		result = NaN;
+	} else {
+		result = Number(string);
+		if (result.toString() === "NaN") result = ml_error("ValueError", "Error parsing number");
+	}
+	ml_resume(caller, result);
 });
 
 ml_method_define("+", [MLNumberT, MLNumberT], false, function(caller, args) {
