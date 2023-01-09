@@ -2905,7 +2905,11 @@ ml_method_define(MLTimeT, [], false, function(caller, args) {
 	ml_resume(caller, new Date());
 });
 ml_method_define(MLTimeT, [MLStringT], false, function(caller, args) {
-	ml_resume(caller, new Date(args[0]));
+	try {
+		ml_resume(caller, new Date(args[0]));
+	} catch (error) {
+		ml_resume(caller, ml_error("ValueError", "Invalid time string"));
+	}
 });
 ml_method_define("append", [MLStringBufferT, MLTimeT], false, function(caller, args) {
 	let buffer = args[0];
