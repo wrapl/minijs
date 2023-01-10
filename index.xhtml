@@ -59,7 +59,13 @@ compileElement.onclick = function() {
 			if (request.status === 200) {
 				let json = request.responseText;
 				bytecodeElement.textContent = json;
-				window.main = ml_decode(JSON.parse(json), []);
+				try {
+					window.main = ml_decode(JSON.parse(json), []);
+				} catch (error) {
+					consoleElement.textContent = error;
+				}
+			} else {
+				consoleElement.textContent = request.responseText;
 			}
 		}
 	}

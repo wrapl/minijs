@@ -353,7 +353,7 @@ const MLJSObjectIterT = ml_type("object-iter", [], {
 		ml_resume(caller, self.object[self.keys[0]]);
 	}
 });
-export const MLJSObjectT = ml_type("object", [MLIteratableT], {
+export const MLJSObjectT = Globals["json"] = ml_type("object", [MLIteratableT], {
 	iterate: function(caller, self) {
 		let keys = Object.keys(self);
 		if (keys.length) {
@@ -2659,7 +2659,6 @@ ml_method_define("append", [MLStringBufferT, MLMapT], false, function(caller, ar
 	ml_call(state, appendMethod, [buffer, node.key]);
 });
 
-
 ml_method_define("append", [MLStringBufferT, MLJSObjectT], false, function(caller, args) {
 	let buffer = args[0];
 	let keys = Object.keys(args[1]);
@@ -2707,6 +2706,11 @@ ml_method_define(MLJSObjectT, [MLNamesT], true, function(caller, args) {
 	for (let i = 0; i < names.length; ++i) {
 		object[names[i]] = ml_deref(args[i + 1]);
 	}
+	ml_resume(caller, object);
+});
+ml_method_define(MLJSObjectT, [MLMapT], false, function(caller, args) {
+	let object = {};
+	args[0].forEach((key, value) => object[key] = value);
 	ml_resume(caller, object);
 });
 ml_method_define("[]", [MLJSObjectT, MLStringT], false, function(caller, args) {
@@ -2898,7 +2902,7 @@ ml_method_define("append", [MLStringBufferT, MLArrayT], false, function(caller, 
 	ml_resume(caller, buffer);
 });
 
-export const MLTimeT = ml_type("time");
+export const MLTimeT = Globals["time"] = ml_type("time");
 Object.defineProperty(Date.prototype, "ml_type", {value: MLTimeT});
 
 ml_method_define(MLTimeT, [], false, function(caller, args) {
