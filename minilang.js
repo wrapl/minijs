@@ -2066,7 +2066,7 @@ ml_method_define(MLNumberT, [MLStringT], false, function(caller, args) {
 		result = NaN;
 	} else {
 		result = Number(string);
-		if (result.toString() === "NaN") result = ml_error("ValueError", "Error parsing number");
+		if (isNaN(result)) result = ml_error("ValueError", "Error parsing number");
 	}
 	ml_resume(caller, result);
 });
@@ -2909,10 +2909,11 @@ ml_method_define(MLTimeT, [], false, function(caller, args) {
 	ml_resume(caller, new Date());
 });
 ml_method_define(MLTimeT, [MLStringT], false, function(caller, args) {
-	try {
-		ml_resume(caller, new Date(args[0]));
-	} catch (error) {
+	let result = new Date(args[0]);
+	if (isNaN(result)) {
 		ml_resume(caller, ml_error("ValueError", "Invalid time string"));
+	} else {
+		ml_resume(caller, result);
 	}
 });
 ml_method_define("append", [MLStringBufferT, MLTimeT], false, function(caller, args) {
