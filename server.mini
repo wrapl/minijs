@@ -39,7 +39,8 @@ Root:add("test.js"; Request, Response) do
 end
 
 let Globals := map(globals()):grow({
-	"print" is external("print")
+	"print" is external("print"),
+	"json" is external("json")
 })
 
 print('Globals = {Globals}\n')
