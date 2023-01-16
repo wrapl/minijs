@@ -1,6 +1,7 @@
 const Trampolines = [];
 const MethodsCache = {};
 export const Globals = {};
+export const ObjectTypes = {};
 
 const EndState = {run: function(_, value) {
 	console.log("Result: ", value);
@@ -335,6 +336,23 @@ const MLJSFunctionT = ml_type("function", [MLFunctionT], {
 	}
 });
 Object.defineProperty(Function.prototype, "ml_type", {value: MLJSFunctionT});
+
+const MLStringSwitchT = ml_type("string-switch", [], {
+	ml_call: function(caller, self, args) {
+		let value = ml_deref(args[0]);
+		if (!ml_is(value, MLStringT)) return ml_error("TypeError", `Expected string, not ${ml_typeof(value).name}`);
+		ml_resume(caller, self.cases.findIndex(c => c.some(x => {
+			if (x instanceof RegExp) {
+				return x.test(value);
+			} else {
+				return x === value;
+			}
+		})));
+	}
+});
+ObjectTypes["string-switch"] = function(args) {
+	return ml_value(MLStringSwitchT, {cases: args});
+}
 
 const MLJSObjectIterT = ml_type("object-iter", [], {
 	iter_next: function(caller, self) {
@@ -1282,13 +1300,13 @@ function ml_frame_run(self, result) {
 			break;
 		case MLI_SWITCH: {
 			if (typeof(result) !== "number") {
-				result = ml_error("TypeError", `expected integer, not ${ml_typeof(result).name}`);
+				result = ml_error("TypeError", `Expected integer, not ${ml_typeof(result).name}`);
 				ml_error_trace_add(result, self.source, code[ip + 1]);
 				ip = self.ep;
 			} else {
-				let count = code[ip + 2];
-				if (result < 0 || result >= count) result = count - 1;
-				ip = code[ip + 3][result];
+				let insts = code[ip + 2];
+				if (result < 0 || result >= insts.length) result = insts.length - 1;
+				ip = insts[result];
 			}
 			break;
 		}
@@ -1724,13 +1742,13 @@ function ml_frame_debug_run(self, result) {
 			break;
 		case MLI_SWITCH: {
 			if (typeof(result) !== "number") {
-				result = ml_error("TypeError", `expected integer, not ${ml_typeof(result).name}`);
+				result = ml_error("TypeError", `Expected integer, not ${ml_typeof(result).name}`);
 				ml_error_trace_add(result, self.source, code[ip + 1]);
 				ip = self.ep;
 			} else {
-				let count = code[ip + 2];
-				if (result < 0 || result >= count) result = count - 1;
-				ip = code[ip + 3][result];
+				let insts = code[ip + 2];
+				if (result < 0 || result >= insts.length) result = insts.length - 1;
+				ip = insts[result];
 			}
 			break;
 		}
@@ -2950,9 +2968,7 @@ export function ml_decode(value, cache) {
 			switch (value[1]) {
 			case 'list': {
 				let list = cache[value[0]] = [];
-				for (let i = 2; i < value.length; ++i) {
-					list.push(ml_decode(value[i], cache));
-				}
+				for (let i = 2; i < value.length; ++i) list.push(ml_decode(value[i], cache));
 				return list;
 			}
 			case 'map': {
@@ -2983,17 +2999,13 @@ export function ml_decode(value, cache) {
 			case 'l':
 			case 'list': {
 				let list = [];
-				for (let i = 1; i < value.length; ++i) {
-					list.push(ml_decode(value[i], cache));
-				}
+				for (let i = 1; i < value.length; ++i) list.push(ml_decode(value[i], cache));
 				return list;
 			}
 			case 'n':
 			case 'names': {
 				let names = ml_names();
-				for (let i = 1; i < value.length; ++i) {
-					names.push(value[i].toString());
-				}
+				for (let i = 1; i < value.length; ++i) names.push(value[i].toString());
 				return names;
 			}
 			case 'm':
@@ -3037,6 +3049,13 @@ export function ml_decode(value, cache) {
 					array.values.set(value[3]);
 				}
 				return array;
+			}
+			case "o": {
+				let fn = ObjectTypes[value[1]];
+				if (!fn) throw `unknown object type ${value[1]}`;
+				let args = [];
+				for (let i = 2; i < value.length; ++i) args.push(ml_decode(value[i], cache));
+				return fn(args);
 			}
 			}
 		}
