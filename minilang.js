@@ -139,6 +139,18 @@ export function ml_is(value, type) {
 export const MLAnyT = Globals["any"] = ml_type("any");
 MLTypeT.parents = [MLTypeT, MLAnyT];
 
+const MLTypeSwitchT = ml_type("type-switch", [], {
+	ml_call: function(caller, self, args) {
+		let value = ml_deref(args[0]);
+		ml_resume(caller, self.cases.findIndex(c => c.some(x => {
+			return ml_is(value, x);
+		})));
+	}
+});
+ObjectTypes["type-switch"] = function(args) {
+	return ml_value(MLTypeSwitchT, {cases: args});
+}
+
 export function ml_identity(caller, args) {
 	ml_resume(caller, args[0]);
 }
@@ -266,7 +278,21 @@ export const MLNumberT = Globals["number"] = ml_type("number", [MLFunctionT], {
 		}
 	}
 });
+//Globals["integer"] = Globals["real"] = MLNumberT;
 Object.defineProperty(Number.prototype, "ml_type", {value: MLNumberT});
+
+const MLNumberSwitchT = ml_type("number-switch", [], {
+	ml_call: function(caller, self, args) {
+		let value = ml_deref(args[0]);
+		if (!ml_is(value, MLNumberT)) return ml_error("TypeError", `Expected number, not ${ml_typeof(value).name}`);
+		ml_resume(caller, self.cases.findIndex(c => c.some(x => {
+			return x[0] <= value && value <= x[1];
+		})));
+	}
+});
+ObjectTypes["integer-switch"] = ObjectTypes["real-switch"] = function(args) {
+	return ml_value(MLNumberSwitchT, {cases: args});
+}
 
 const MLRangeIterT = ml_type("range-iter", [], {
 	iter_next: function(caller, self) {
@@ -3052,10 +3078,14 @@ export function ml_decode(value, cache) {
 			}
 			case "o": {
 				let fn = ObjectTypes[value[1]];
-				if (!fn) throw `unknown object type ${value[1]}`;
+				if (!fn) throw `Unknown object type ${value[1]}`;
 				let args = [];
 				for (let i = 2; i < value.length; ++i) args.push(ml_decode(value[i], cache));
 				return fn(args);
+			}
+			case "t": {
+				if (value[1] === "nil") return MLNilT;
+				throw `Unknown type ${value[1]}`;
 			}
 			}
 		}
