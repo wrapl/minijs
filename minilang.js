@@ -2415,7 +2415,7 @@ ml_method_define("replace", [MLStringT, MLStringT, MLStringT], false, function(c
 	ml_resume(caller, args[0].replaceAll(args[1], args[2]));
 });
 ml_method_define("replace", [MLStringT, MLRegexT, MLStringT], false, function(caller, args) {
-	ml_resume(caller, args[0].replaceAll(args[1], args[2]));
+	ml_resume(caller, args[0].replaceAll(new RegExp(args[1], "g"), args[2]));
 });
 ml_method_define("append", [MLStringBufferT, MLStringT], false, function(caller, args) {
 	args[0].string += args[1];
@@ -3033,7 +3033,14 @@ export function ml_decode(value, cache) {
 			case '_':
 			case 'blank': return MLBlank;
 			case 'r':
-			case 'regex': return new RegExp(value[1], 'g');
+			case 'regex': {
+				let pattern = value[1];
+				if (pattern.startsWith("(?i)")) {
+					return new RegExp(pattern.substring(4), 'i');
+				} else {
+					return new RegExp(pattern);
+				}
+			}
 			case ':':
 			case 'method': return ml_method(value[1]);
 			case '()': return ml_value(MLTupleT, {values: value.slice(1)});
