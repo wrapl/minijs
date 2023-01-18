@@ -2239,6 +2239,15 @@ ml_method_define("[]", [MLStringT, MLNumberT, MLNumberT], false, function(caller
 ml_method_define("trim", [MLStringT], false, function(caller, args) {
 	ml_resume(caller, args[0].trim());
 });
+ml_method_define("trim", [MLStringT, MLStringT], false, function(caller, args) {
+	let subject = args[0];
+	let trim = args[1];
+	let start = 0, end = subject.length;
+	while (start < end && trim.indexOf(subject[start]) > -1) ++start;
+	while (start < end && trim.indexOf(subject[end - 1]) > -1) --end;
+	console.log(subject, subject.length, start, end);
+	ml_resume(caller, subject.substring(start, end));
+});
 ml_method_define("length", [MLStringT], false, function(caller, args) {
 	ml_resume(caller, args[0].length);
 });
@@ -2401,6 +2410,12 @@ ml_method_define("ends", [MLStringT, MLStringT], false, function(caller, args) {
 	} else {
 		return ml_resume(caller, null);
 	}
+});
+ml_method_define("replace", [MLStringT, MLStringT, MLStringT], false, function(caller, args) {
+	ml_resume(caller, args[0].replaceAll(args[1], args[2]));
+});
+ml_method_define("replace", [MLStringT, MLRegexT, MLStringT], false, function(caller, args) {
+	ml_resume(caller, args[0].replaceAll(args[1], args[2]));
 });
 ml_method_define("append", [MLStringBufferT, MLStringT], false, function(caller, args) {
 	args[0].string += args[1];
@@ -3018,7 +3033,7 @@ export function ml_decode(value, cache) {
 			case '_':
 			case 'blank': return MLBlank;
 			case 'r':
-			case 'regex': return new RegExp(value[1]);
+			case 'regex': return new RegExp(value[1], 'g');
 			case ':':
 			case 'method': return ml_method(value[1]);
 			case '()': return ml_value(MLTupleT, {values: value.slice(1)});
