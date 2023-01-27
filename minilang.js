@@ -156,7 +156,7 @@ export function ml_identity(caller, args) {
 }
 
 export const MLFunctionT = Globals["function"] = ml_type("function");
-export const MLIteratableT = ml_type("iteratable");
+export const MLSequenceT = ml_type("sequence");
 
 export const MLNilT = ml_type("nil", [], {
 	ml_hash: function(self) { return ""; },
@@ -166,7 +166,25 @@ export const MLNilT = ml_type("nil", [], {
 });
 export const MLNil = null;
 
-export const MLSomeT = ml_type("some");
+export const MLSomeT = ml_type("some", [], {
+	ml_call: function(caller, self, args) {
+		function next(state, iter) {
+			if (ml_typeof(iter) === MLErrorT) {
+				return ml_resume(self.caller, iter);
+			} else if (iter === null) {
+				return ml_resume(state.caller, iter);
+			}
+			state.iter = iter;
+			state.run = function(state, value) {
+				if (value !== null) return ml_resume(state.caller, value);
+				state.run = next;
+				ml_iter_next(state, state.iter);
+			}
+			ml_iter_value(state, iter);
+		}
+		ml_iterate({caller, run: next, iter: null}, args[0]);
+	}
+});
 export const MLSome = Globals["some"] = ml_value(MLSomeT);
 
 export const MLBlankT = ml_type("blank", [], {
@@ -313,7 +331,7 @@ const MLRangeIterT = ml_type("range-iter", [], {
 		ml_resume(caller, self.value);
 	}
 });
-export const MLRangeT = ml_type("range", [MLIteratableT], {
+export const MLRangeT = ml_type("range", [MLSequenceT], {
 	iterate: function(caller, self) {
 		if (self.step > 0 && self.min > self.max) {
 			ml_resume(caller, null);
@@ -341,7 +359,7 @@ const MLStringIterT = ml_type("string-iter", [], {
 		ml_resume(caller, self.string.charAt(self.pos - 1));
 	}
 });
-export const MLStringT = Globals["string"] = ml_type("string", [MLIteratableT], {
+export const MLStringT = Globals["string"] = ml_type("string", [MLSequenceT], {
 	iterate: function(caller, self) {
 		if (self.length) {
 			ml_resume(caller, ml_value(MLStringIterT, {string: self, pos: 1}));
@@ -397,7 +415,7 @@ const MLJSObjectIterT = ml_type("object-iter", [], {
 		ml_resume(caller, self.object[self.keys[0]]);
 	}
 });
-export const MLJSObjectT = Globals["json"] = ml_type("object", [MLIteratableT], {
+export const MLJSObjectT = Globals["json"] = ml_type("object", [MLSequenceT], {
 	iterate: function(caller, self) {
 		let keys = Object.keys(self);
 		if (keys.length) {
@@ -444,7 +462,7 @@ const duoMethod = ml_method("=>");
 const filterSoloMethod = ml_method("->?");
 const filterDuoMethod = ml_method("=>?");
 
-const MLChainedFunctionT = ml_type("chained-function", [MLFunctionT, MLIteratableT], {
+const MLChainedFunctionT = ml_type("chained-function", [MLFunctionT, MLSequenceT], {
 	ml_call: function(caller, self, args) {},
 	iterate: function(caller, self) {
 		let state = ml_value(MLChainedStateT, {
@@ -583,7 +601,7 @@ const MLListNodeT = ml_type("list-node", [], {
 		ml_resume(caller, self);
 	}
 });
-export const MLListT = Globals["list"] = ml_type("list", [MLIteratableT], {
+export const MLListT = Globals["list"] = ml_type("list", [MLSequenceT], {
 	iterate: function(caller, self) {
 		if (!self.length) return ml_resume(caller, null);
 		ml_resume(caller, ml_value(MLListNodeT, {list: self, index: 0}));
@@ -610,7 +628,7 @@ export function ml_list_pull(list) {
 	return list.pop();
 }
 
-export const MLNamesT = ml_type("names", [MLListT, MLIteratableT], {
+export const MLNamesT = ml_type("names", [MLListT, MLSequenceT], {
 	iterate: MLListT.iterate
 });
 export function ml_names() {
@@ -632,7 +650,7 @@ const MLMapNodeT = ml_type("map-node", [], {
 		ml_resume(caller, self);
 	}
 });
-export const MLMapT = Globals["map"] = ml_type("map", [MLIteratableT], {
+export const MLMapT = Globals["map"] = ml_type("map", [MLSequenceT], {
 	iterate: function(caller, self) {
 		ml_resume(caller, self.head || null);
 	}
@@ -846,7 +864,7 @@ export function ml_debug(debug) {
 	ml_debugger = debug;
 }
 
-export const MLClosureT = ml_type("closure", [MLFunctionT, MLIteratableT], {
+export const MLClosureT = ml_type("closure", [MLFunctionT, MLSequenceT], {
 	ml_call: function(caller, self, args) {
 		let info = self.info;
 		let stack = [];
@@ -1973,31 +1991,33 @@ Globals.count = function(caller, args) {
 }
 
 Globals.first = function(caller, args) {
-	let state = {caller, run: function(self, value) {
-		self.run = function(self, value) {
-			ml_resume(self.caller, value);
+	function next(state, iter) {
+		if (ml_typeof(iter) === MLErrorT) {
+			return ml_resume(self.caller, iter);
+		} else if (iter == null) {
+			return ml_resume(self.caller, iter);
 		}
-		ml_iter_value(self, value);
-	}};
-	ml_iterate(state, args[0]);
+		ml_iter_value(state.caller, iter);
+	}
+	ml_iterate({caller, run: next}, args[0]);
 }
 
 Globals.first2 = function(caller, args) {
-	let state = {caller, run: function(self, value) {
-		if (ml_typeof(value) === MLErrorT) {
-			return ml_resume(self.caller, value);
-		} else if (value == null) {
-			return ml_resume(self.caller, value);
+	let state = {caller, run: function(self, iter) {
+		if (ml_typeof(iter) === MLErrorT) {
+			return ml_resume(self.caller, iter);
+		} else if (iter == null) {
+			return ml_resume(self.caller, iter);
 		}
-		self.iter = value;
+		self.iter = iter;
 		self.run = function(self, value) {
 			self.key = value;
 			self.run = function(self, value) {
-				ml_resume(self.caller, ml_value(MLTupleT, [self.key, value]));
+				ml_resume(self.caller, ml_value(MLTupleT, {values: [self.key, value]}));
 			}
 			ml_iter_value(self, self.iter);
 		}
-		ml_iter_key(self, self.iter);
+		ml_iter_key(self, iter);
 	}};
 	ml_iterate(state, args[0]);
 }
@@ -2038,13 +2058,13 @@ ml_method_define(">=", [MLAnyT, MLAnyT], false, function(caller, args) {
 ml_method_define("->", [MLFunctionT, MLFunctionT], false, function(caller, args) {
 	ml_resume(caller, ml_chained([args[0], args[1]]));
 });
-ml_method_define("->", [MLIteratableT, MLFunctionT], false, function(caller, args) {
+ml_method_define("->", [MLSequenceT, MLFunctionT], false, function(caller, args) {
 	ml_resume(caller, ml_chained([args[0], args[1]]));
 });
-ml_method_define("=>", [MLIteratableT, MLFunctionT], false, function(caller, args) {
+ml_method_define("=>", [MLSequenceT, MLFunctionT], false, function(caller, args) {
 	ml_resume(caller, ml_chained([args[0], duoMethod, 1, args[1]]));
 });
-ml_method_define("=>", [MLIteratableT, MLFunctionT, MLFunctionT], false, function(caller, args) {
+ml_method_define("=>", [MLSequenceT, MLFunctionT, MLFunctionT], false, function(caller, args) {
 	ml_resume(caller, ml_chained([args[0], duoMethod, args[1], args[2]]));
 });
 ml_method_define("->", [MLChainedFunctionT, MLFunctionT], false, function(caller, args) {
@@ -2066,10 +2086,10 @@ ml_method_define("=>", [MLChainedFunctionT, MLFunctionT, MLFunctionT], false, fu
 	entries.push(args[2]);
 	ml_resume(caller, ml_chained(entries));
 });
-ml_method_define("->?", [MLIteratableT, MLFunctionT], false, function(caller, args) {
+ml_method_define("->?", [MLSequenceT, MLFunctionT], false, function(caller, args) {
 	ml_resume(caller, ml_chained([args[0], filterSoloMethod, args[1]]));
 });
-ml_method_define("=>?", [MLIteratableT, MLFunctionT], false, function(caller, args) {
+ml_method_define("=>?", [MLSequenceT, MLFunctionT], false, function(caller, args) {
 	ml_resume(caller, ml_chained([args[0], filterDuoMethod, args[1]]));
 });
 ml_method_define("->?", [MLChainedFunctionT, MLFunctionT], false, function(caller, args) {
@@ -2447,7 +2467,7 @@ ml_method_define("append", [MLStringBufferT, MLTupleT], false, function(caller, 
 	ml_call(state, appendMethod, [buffer, list[0]]);
 });
 
-ml_method_define(MLListT, [MLIteratableT], true, function(caller, args) {
+ml_method_define(MLListT, [MLSequenceT], true, function(caller, args) {
 	let list = [];
 	let state = {caller, list, run: iter_next};
 	ml_iterate(state, ml_chained(args));
@@ -2587,7 +2607,7 @@ ml_method_define("append", [MLStringBufferT, MLListT], false, function(caller, a
 	ml_call(state, appendMethod, [buffer, list[0]]);
 });
 
-ml_method_define(MLMapT, [MLIteratableT], true, function(caller, args) {
+ml_method_define(MLMapT, [MLSequenceT], true, function(caller, args) {
 	let map = ml_map();
 	let state = {caller, map, run: iter_next};
 	ml_iterate(state, ml_chained(args));

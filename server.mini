@@ -47,7 +47,7 @@ print('Globals = {Globals}\n')
 
 Root:add("compile"; Request, Response) do
 	let Parser := parser()
-	let Compiler := compiler(Globals)
+	let Compiler := compiler(external::default)
 	let Input := Request:get_post("input")
 	print("Input = ", Input, "\n")
 	Parser:input(Input)
