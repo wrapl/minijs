@@ -3019,6 +3019,7 @@ function ml_decode_global(name, source, line) {
 }
 
 export function ml_decode(value, cache) {
+	cache = cache || [];
 	switch (typeof(value)) {
 	case 'boolean': return value;
 	case 'number': return value;

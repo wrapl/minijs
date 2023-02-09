@@ -60,7 +60,7 @@ compileElement.onclick = function() {
 				let json = request.responseText;
 				bytecodeElement.textContent = json;
 				try {
-					window.main = ml_decode(JSON.parse(json), []);
+					window.main = ml_decode(JSON.parse(json));
 				} catch (error) {
 					consoleElement.textContent = error;
 				}
