@@ -3036,7 +3036,7 @@ export function ml_decode(value, cache) {
 			case 'map': {
 				let map = cache[value[0]] = ml_map();
 				for (let i = 2; i < value.length; i += 2) {
-					map.insert(ml_decode(value[i], cache), ml_decode(value[i + 1], cache));
+					ml_map_insert(map, ml_decode(value[i], cache), ml_decode(value[i + 1], cache));
 				}
 				return map;
 			}
@@ -3081,7 +3081,7 @@ export function ml_decode(value, cache) {
 			case 'map': {
 				let map = ml_map();
 				for (let i = 1; i < value.length; i += 2) {
-					map.insert(ml_decode(value[i], cache), ml_decode(value[i + 1], cache));
+					ml_map_insert(map, ml_decode(value[i], cache), ml_decode(value[i + 1], cache));
 				}
 				return map;
 			}
