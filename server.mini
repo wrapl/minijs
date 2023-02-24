@@ -44,11 +44,14 @@ let Globals := map(globals()):grow({
 	"json" is external("json")
 })
 
+let Externals := external::set()
+Externals:add("print", print)
+
 print('Globals = {Globals}\n')
 
 Root:add("compile"; Request, Response) do
 	let Parser := parser()
-	let Compiler := compiler(external::default)
+	let Compiler := compiler(global)
 	let Input := Request:get_post("input")
 	print("Input = ", Input, "\n")
 	Parser:input(Input)
@@ -56,7 +59,7 @@ Root:add("compile"; Request, Response) do
 		let Function := Parser:compile(Compiler)
 		Response:set_code(200)
 		Response:set_header("Content-Type", "application/json")
-		Response:write(json::encode(minijs::encode(Function)))
+		Response:write(json::encode(minijs::encode(Function, Externals)))
 	on Error do
 		Response:set_code(400)
 		Response:set_header("Content-Type", "text/plain")

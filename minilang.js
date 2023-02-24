@@ -1976,7 +1976,7 @@ Globals.print = function(caller, args) {
 	ml_call(state, appendMethod, [buffer, args[0]]);
 }
 
-Globals.count = function(caller, args) {
+ml_method_define("count", [MLSequenceT], true, function(caller, args) {
 	let state = {caller, count: 0, run: function(self, value) {
 		if (ml_typeof(value) === MLErrorT) {
 			ml_resume(self.caller, value);
@@ -1987,10 +1987,39 @@ Globals.count = function(caller, args) {
 			ml_iter_next(self, value);
 		}
 	}};
-	ml_iterate(state, args[0]);
-}
+	ml_iterate(state, ml_chained(args));
+});
 
-Globals.first = function(caller, args) {
+Globals.count2 = function(caller, args) {
+	function iter_next(self, value) {
+		if (ml_typeof(value) === MLErrorT) {
+			ml_resume(self.caller, value);
+		} else if (value == null) {
+			ml_resume(self.caller, self.counts);
+		} else {
+			self.run = iter_value;
+			ml_iter_value(self, self.iter = value);
+		}
+	}
+	function iter_value(self, value) {
+		if (ml_typeof(value) === MLErrorT) {
+			return ml_resume(self.caller, value);
+		}
+		value = ml_deref(value);
+		let node = ml_map_search(self.counts, value);
+		if (node) {
+			node.value++;
+		} else {
+			ml_map_insert(self.counts, value, 1);
+		}
+		self.run = iter_next;
+		ml_iter_next(self, self.iter);
+	}
+	let state = {caller, counts: ml_map(), run: iter_next};
+	ml_iterate(state, ml_chained(args));
+};
+
+ml_method_define("first", [MLSequenceT], true, function(caller, args) {
 	function next(state, iter) {
 		if (ml_typeof(iter) === MLErrorT) {
 			return ml_resume(self.caller, iter);
@@ -2000,9 +2029,9 @@ Globals.first = function(caller, args) {
 		ml_iter_value(state.caller, iter);
 	}
 	ml_iterate({caller, run: next}, args[0]);
-}
+});
 
-Globals.first2 = function(caller, args) {
+ml_method_define("first2", [MLSequenceT], true, function(caller, args) {
 	let state = {caller, run: function(self, iter) {
 		if (ml_typeof(iter) === MLErrorT) {
 			return ml_resume(self.caller, iter);
@@ -2019,8 +2048,8 @@ Globals.first2 = function(caller, args) {
 		}
 		ml_iter_key(self, iter);
 	}};
-	ml_iterate(state, args[0]);
-}
+	ml_iterate(state, ml_chained(args));
+});
 
 ml_method_define("append", [MLStringBufferT, MLTypeT], false, function(caller, args) {
 	args[0].string += "<" + args[1].name + ">";
@@ -3053,6 +3082,7 @@ export function ml_decode(value, cache) {
 			switch (value[0]) {
 			case '_':
 			case 'blank': return MLBlank;
+			case 'some': return MLSome;
 			case 'r':
 			case 'regex': {
 				let pattern = value[1];
