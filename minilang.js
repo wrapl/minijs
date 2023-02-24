@@ -3077,6 +3077,7 @@ export function ml_decode(value, cache) {
 				}
 				return closure;
 			}
+			default: throw `Error decoding value: ${value}`;
 			}
 		} else {
 			switch (value[0]) {
@@ -3160,6 +3161,7 @@ export function ml_decode(value, cache) {
 				if (value[1] === "nil") return MLNilT;
 				throw `Unknown type ${value[1]}`;
 			}
+			default: throw `Error decoding value: ${value}`;
 			}
 		}
 	}
