@@ -2672,6 +2672,13 @@ ml_method_define(MLMapT, [MLSequenceT], true, function(caller, args) {
 		}
 	}
 });
+ml_method_define("::", [MLMapT, MLStringT], false, function(caller, args) {
+	let map = args[0];
+	let key = args[1];
+	let node = ml_map_search(map, key);
+	if (node) return ml_resume(caller, node);
+	ml_resume(caller, ml_value(MLMapIndexT, {map, key}));
+});
 ml_method_define("[]", [MLMapT, MLAnyT], false, function(caller, args) {
 	let map = args[0];
 	let key = args[1];
