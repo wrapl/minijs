@@ -2191,6 +2191,21 @@ ml_method_define("append", [MLStringBufferT, MLNumberT], false, function(caller,
 	args[0].string += args[1].toString();
 	ml_resume(caller, args[0]);
 });
+
+function intToBase(value, base) {
+	let chars = [];
+	let sign = "";
+	if (value < 0) {
+		sign = "-";
+		value = -value;
+	}
+	do {
+		chars.unshift("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[value % base]);
+		value = Math.floor(value / base);
+	} while (value);
+	return sign + chars.join("");
+}
+
 ml_method_define("append", [MLStringBufferT, MLNumberT, MLNumberT], false, function(caller, args) {
 	let base = args[2];
 	if (base < 2 || base > 36 || base !== Math.floor(base)) {
@@ -2200,27 +2215,86 @@ ml_method_define("append", [MLStringBufferT, MLNumberT, MLNumberT], false, funct
 	if (value !== Math.floor(value)) {
 		return ml_resume(caller, ml_error("UnsupportedError", "Base conversions of reals not supported yet"));
 	}
-	let string = "";
-	if (value < 0) {
-		args[0].string += "-";
-		value = -value;
-	}
-	do {
-		string = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[value % base] + string;
-		value = Math.floor(value / base);
-	} while (value);
-	args[0].string += string;
+	args[0].string += intToBase(value, base);
 	ml_resume(caller, args[0]);
+});
+ml_method_define("append", [MLStringBufferT, MLNumberT, MLStringT], false, function(caller, args) {
+	let format = /^(\s*)%(-)?([+ ])?(#)?(')?(0)?([1-9][0-9]*)?(\.[0-9]+)?l?([diouxXaefgAEG])(\s*)$/.exec(args[2]);
+	console.log("format", format);
+	if (format === null) return ml_resume(caller, ml_error("FormatError", "Invalid format string"));
+	let alwaysPoint = !!format[4];
+	let separators = !!format[5];
+	let width = parseInt(format[7]);
+	let precision = format[8] ? parseInt(format[8].substring(1)) : 6;
+	let type = format[9];
+	let value = args[1];
+	let sign = "";
+	if (value < 0) {
+		sign = "-";
+		value = -value;
+	} else if (format[3] === "+") {
+		sign = "+";
+	} else if (format[3] === " ") {
+		sign = " ";
+	}
+	let base = "";
+	switch (type) {
+	case "d": case "i": case "u":
+		base = Math.floor(value).toString();
+		break;
+	case "o":
+		base = intToBase(Math.floor(value), 8);
+		break;
+	case "x": case "X":
+		base = intToBase(Math.floor(value), 16);
+		if (type === "x") base = base.toLowerCase();
+		break;
+	case "a": case "A":
+		return ml_resume(caller, ml_error("FormatError", "Unsupported format string"));
+	case "e": case "E":
+		base = value.toExponential(precision);
+		if (type === "E") base = base.toUpperCase();
+		break;
+	case "f": case "F":
+		base = value.toFixed(precision);
+		if (type === "F") base = base.toUpperCase();
+		break;
+	case "g": case "G":
+		let exp = Math.log10(value);
+		if ((exp < -4) || (exp >= precision)) {
+			base = value.toExponential(precision);
+		} else {
+			base = value.toFixed(precision);
+		}
+		if (type === "G") base = base.toUpperCase();
+		break;
+	}
+	console.log("sign", sign);
+	console.log("base", base);
+	if (width !== undefined) {
+		let count = width - (base.length + sign.length);
+		if (count > 0) {
+			if (!!format[2]) {
+				base += " ".repeat(count);
+			} else {
+				let padding = format[6] ? "0" : " ";
+				base = padding.repeat(count) + base;
+			}
+		}
+	}
+	console.log("base", base);
+	args[0].string += format[1] + sign + base + format[10];
+	return ml_resume(caller, args[0]);
 });
 
 ml_method_define(MLStringT, [MLStringT], false, ml_identity);
-ml_method_define(MLStringT, [MLAnyT], false, function(caller, args) {
+ml_method_define(MLStringT, [MLAnyT], true, function(caller, args) {
 	let buffer = ml_stringbuffer();
 	let state = {caller, run: function(self, value) {
 		if (ml_typeof(value) === MLErrorT) return ml_resume(self.caller, value);
 		ml_resume(self.caller, value.string);
 	}};
-	ml_call(state, appendMethod, [buffer, args[0]]);
+	ml_call(state, appendMethod, [buffer].concat(args));
 });
 ml_method_define(MLStringT, [MLNilT], false, function(caller, _) {
 	ml_resume(caller, "nil");
@@ -2233,27 +2307,6 @@ ml_method_define(MLStringT, [MLBooleanT], false, function(caller, args) {
 });
 ml_method_define(MLStringT, [MLNumberT], false, function(caller, args) {
 	ml_resume(caller, args[0].toString());
-});
-ml_method_define(MLStringT, [MLNumberT, MLNumberT], false, function(caller, args) {
-	let base = args[1];
-	if (base < 2 || base > 36 || base !== Math.floor(base)) {
-		return ml_resume(caller, ml_error("RangeError", "Invalid base"));
-	}
-	let value = args[0];
-	if (value !== Math.floor(value)) {
-		return ml_resume(caller, ml_error("UnsupportedError", "Base conversions of reals not supported yet"));
-	}
-	let string = "";
-	let prefix = "";
-	if (value < 0) {
-		prefix = "-";
-		value = -value;
-	}
-	do {
-		string = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[value % base] + string;
-		value = Math.floor(value / base);
-	} while (value);
-	ml_resume(caller, prefix + string);
 });
 
 ml_method_define("+", [MLStringT, MLStringT], false, function(caller, args) {
