@@ -3090,6 +3090,15 @@ ml_method_define("append", [MLStringBufferT, MLTimeT], false, function(caller, a
 	buffer.string += time.toISOString();
 	ml_resume(caller, buffer);
 });
+ml_method_define("+", [MLTimeT, MLNumberT], false, function(caller, args) {
+	ml_resume(caller, new Date(args[0].getTime() + args[1] * 1000));
+});
+ml_method_define("-", [MLTimeT, MLNumberT], false, function(caller, args) {
+	ml_resume(caller, new Date(args[0].getTime() - args[1] * 1000));
+});
+ml_method_define("-", [MLTimeT, MLTimeT], false, function(caller, args) {
+	ml_resume(caller, (args[0].getTime() - args[1].getTime()) / 1000);
+});
 
 window.Globals = Globals;
 
