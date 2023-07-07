@@ -182,7 +182,7 @@ export const MLSomeT = ml_type("some", [], {
 			}
 			ml_iter_value(state, iter);
 		}
-		ml_iterate({caller, run: next, iter: null}, args[0]);
+		ml_iterate({caller, run: next, iter: null}, ml_chained(args));
 	}
 });
 export const MLSome = Globals["some"] = ml_value(MLSomeT);
