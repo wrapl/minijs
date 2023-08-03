@@ -753,9 +753,12 @@ function ml_uninitialized_set(uninitialized, value) {
 	}
 }
 
-export const MLStringBufferT = ml_type("stringbuffer");
+export const MLStringBufferT = MLStringT.exports.buffer = ml_type("stringbuffer");
 export function ml_stringbuffer() {
 	return ml_value(MLStringBufferT, {string: ""});
+}
+MLStringBufferT.of = function(caller, args) {
+	ml_resume(caller, ml_stringbuffer());
 }
 
 const MLGlobalT = ml_type("global", [], {
@@ -2522,6 +2525,21 @@ ml_method_define("replace", [MLStringT, MLRegexT, MLStringT], false, function(ca
 ml_method_define("append", [MLStringBufferT, MLStringT], false, function(caller, args) {
 	args[0].string += args[1];
 	ml_resume(caller, args[0]);
+});
+
+ml_method_define("write", [MLStringBufferT, MLAnyT], true, function(caller, args) {
+	let start = args[0].string.length;
+	let state = {caller, index: 1, run: function(self, value) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(self.caller, value);
+		if (++self.index === args.length) return ml_resume(self.caller, value.string.length - start);
+		ml_call(state, appendMethod, [value, args[self.index]]);
+	}};
+	ml_call(state, appendMethod, [args[0], args[1]]);
+});
+ml_method_define("rest", [MLStringBufferT], false, function(caller, args) {
+	let rest = args[0].string;
+	args[0].string = "";
+	ml_resume(caller, rest);
 });
 
 ml_method_define("[]", [MLTupleT, MLNumberT], false, function(caller, args) {
