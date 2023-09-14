@@ -463,7 +463,21 @@ const filterSoloMethod = ml_method("->?");
 const filterDuoMethod = ml_method("=>?");
 
 const MLChainedFunctionT = ml_type("chained-function", [MLFunctionT, MLSequenceT], {
-	ml_call: function(caller, self, args) {},
+	ml_call: function(caller, self, args) {
+		let state = {caller, index: 1, entries: self.entries, run: function(self, value) {
+			if (ml_typeof(value) === MLErrorT) return ml_resume(self.caller, value);
+			let index = self.index;
+			let fn = self.entries[index++];
+			if (fn == undefined) return ml_resume(self.caller, value);
+			if (fn === soloMethod) {
+				fn = self.entries[index++];
+				if (fn == undefined) return ml_resume(self.caller, ml_error("StateError", "Missing value function for chain"));
+			}
+			self.index = index;
+			ml_call(self, fn, [value]);
+		}};
+		ml_call(state, self.entries[0], args);
+	},
 	iterate: function(caller, self) {
 		let state = ml_value(MLChainedStateT, {
 			caller,
