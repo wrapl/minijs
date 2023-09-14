@@ -464,17 +464,17 @@ const filterDuoMethod = ml_method("=>?");
 
 const MLChainedFunctionT = ml_type("chained-function", [MLFunctionT, MLSequenceT], {
 	ml_call: function(caller, self, args) {
-		let state = {caller, index: 1, entries: self.entries, run: function(self, value) {
-			if (ml_typeof(value) === MLErrorT) return ml_resume(self.caller, value);
-			let index = self.index;
-			let fn = self.entries[index++];
-			if (fn == undefined) return ml_resume(self.caller, value);
+		let state = {caller, index: 1, entries: self.entries, run: function(state, value) {
+			if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, value);
+			let index = state.index;
+			let fn = state.entries[index++];
+			if (fn == undefined) return ml_resume(state.caller, value);
 			if (fn === soloMethod) {
-				fn = self.entries[index++];
-				if (fn == undefined) return ml_resume(self.caller, ml_error("StateError", "Missing value function for chain"));
+				fn = state.entries[index++];
+				if (fn == undefined) return ml_resume(state.caller, ml_error("StateError", "Missing value function for chain"));
 			}
-			self.index = index;
-			ml_call(self, fn, [value]);
+			state.index = index;
+			ml_call(state, fn, [value]);
 		}};
 		ml_call(state, self.entries[0], args);
 	},
@@ -2651,6 +2651,23 @@ ml_method_define("count", [MLListT], false, function(caller, args) {
 });
 ml_method_define("+", [MLListT, MLListT], false, function(caller, args) {
 	ml_resume(caller, args[0].concat(args[1]));
+});
+
+let equalMethod = ml_method("=");
+ml_method_define("find", [MLListT, MLAnyT], false, function(caller, args) {
+	let list = args[0];
+	if (list.length === 0) return ml_resume(caller, null);
+	let value = args[1];
+	let node = list[0];
+	let state = {caller, list, value, index: 1, run: function(state, value) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, value);
+		if (value != null) return ml_resume(state.caller, state.index);
+		if (state.list.length < state.index) return ml_resume(state.caller, null);
+		let node = state.list[state.index++];
+		if (node == undefined) return ml_resume(state.caller, null);
+		ml_call(state, equalMethod, [state.value, node]);
+	}};
+	ml_call(state, equalMethod, [value, node]);
 });
 
 function ml_list_sort_run(state, value) {
