@@ -3149,6 +3149,69 @@ ml_method_define("-", [MLTimeT, MLTimeT], false, function(caller, args) {
 	ml_resume(caller, (args[0].getTime() - args[1].getTime()) / 1000);
 });
 
+export const MLVisitorT = Globals["visitor"] = ml_type("visitor", [], {
+	ml_call: function(caller, self, args) {
+		let value = ml_deref(args[0]);
+		let cache = self.cache;
+		if (args.length > 1) {
+			let result = ml_deref(args[1]);
+			cache.set(value, result);
+			return ml_resume(caller, result);
+		} else if (cache.has(value)) {
+			return ml_resume(caller, cache.get(value));
+		} else {
+			cache.set(value, self.error);
+			return ml_call(caller, self.fn, [self, value]);
+		}
+	}
+});
+
+Globals["copy"] = function(caller, args) {
+	let visitor = ml_value(MLVisitorT, {
+		cache: new Map(),
+		error: ml_error("CallError", "Recursive visit detected"),
+		fn: args.length > 1 ? args[1] : ml_method("copy")
+	});
+	return ml_call(caller, visitor.fn, [visitor, args[0]]);
+}
+
+ml_method_define("copy", [MLVisitorT, MLAnyT], false, function(caller, args) {
+	ml_resume(caller, args[1]);
+});
+
+ml_method_define("copy", [MLVisitorT, MLListT], false, function(caller, args) {
+	let visitor = args[0];
+	let list = args[1];
+	let copy = [];
+	visitor.cache.set(list, copy);
+	if (!list.length) return ml_resume(caller, copy);
+	let index = 0;
+	let state = {caller, run: function(self, value) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(caller, value);
+		copy[index++] = value;
+		if (index >= list.length) return ml_resume(caller, copy);
+		ml_call(self, visitor, [list[index]]);
+	}};
+	return ml_call(state, visitor, [list[0]]);
+});
+
+ml_method_define("copy", [MLVisitorT, MLMapT], false, function(caller, args) {
+	let visitor = args[0];
+	let map = args[1];
+	let copy = ml_map();
+	visitor.cache.set(map, copy);
+	if (!map.size) return ml_resume(caller, copy);
+	let node = map.head;
+	let state = {caller, run: function(self, value) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(caller, value);
+		ml_map_insert(copy, node.key, value);
+		node = node.next;
+		if (!node) return ml_resume(caller, copy);
+		ml_call(self, visitor, [node.value]);
+	}};
+	return ml_call(state, visitor, [node.value]);
+});
+
 window.Globals = Globals;
 
 function ml_decode_global(name, source, line) {
