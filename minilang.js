@@ -3148,6 +3148,9 @@ ml_method_define("-", [MLTimeT, MLNumberT], false, function(caller, args) {
 ml_method_define("-", [MLTimeT, MLTimeT], false, function(caller, args) {
 	ml_resume(caller, (args[0].getTime() - args[1].getTime()) / 1000);
 });
+ml_method_define("offset", [MLTimeT], false, function(caller, args) {
+	ml_resume(caller, args[0].getTimezoneOffset());
+});
 
 export const MLVisitorT = Globals["visitor"] = ml_type("visitor", [], {
 	ml_call: function(caller, self, args) {
