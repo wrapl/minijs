@@ -296,7 +296,7 @@ export const MLNumberT = Globals["number"] = ml_type("number", [MLFunctionT], {
 		}
 	}
 });
-//Globals["integer"] = Globals["real"] = MLNumberT;
+Globals["integer"] = Globals["real"] = MLNumberT;
 Object.defineProperty(Number.prototype, "ml_type", {value: MLNumberT});
 
 const MLNumberSwitchT = ml_type("number-switch", [], {
