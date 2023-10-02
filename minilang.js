@@ -2659,6 +2659,39 @@ ml_method_define("delete", [MLListT, MLNumberT], false, function(caller, args) {
 	if (index < 0 || index >= list.length) return ml_resume(caller, null);
 	ml_resume(caller, list.splice(index, 1)[0]);
 });
+ml_method_define("splice", [MLListT], false, function(caller, args) {
+	let list = args[0];
+	ml_resume(caller, list.splice(0));
+});
+ml_method_define("splice", [MLListT, MLNumberT, MLNumberT], false, function(caller, args) {
+	let list = args[0];
+	let start = args[1] - 1;
+	if (start < 0) start += list.length + 1;
+	if (start <= 0) return ml_resume(caller, null);
+	let count = args[2];
+	if (count < 0) return ml_resume(caller, null);
+	if (count == 0) {
+		if (start >= list.length) return ml_resume(caller, null);
+		return ml_resume(caller, []);
+	}
+	if (start + count > list.length) return ml_resume(caller, null);
+	ml_resume(caller, list.splice(start, count));
+});
+ml_method_define("splice", [MLListT, MLNumberT, MLNumberT, MLListT], false, function(caller, args) {
+	let list = args[0];
+	let start = args[1] - 1;
+	if (start < 0) start += list.length + 1;
+	if (start <= 0) return ml_resume(caller, null);
+	let count = args[2];
+	if (count < 0) return ml_resume(caller, null);
+	if (count == 0) {
+		if (start >= list.length) return ml_resume(caller, null);
+		return ml_resume(caller, []);
+	}
+	if (start + count > list.length) return ml_resume(caller, null);
+	let other = args[3];
+	ml_resume(caller, list.splice(start, count, ...other.splice(0)));
+});
 
 let equalMethod = ml_method("=");
 ml_method_define("find", [MLListT, MLAnyT], false, function(caller, args) {
