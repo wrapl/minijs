@@ -2652,6 +2652,13 @@ ml_method_define("count", [MLListT], false, function(caller, args) {
 ml_method_define("+", [MLListT, MLListT], false, function(caller, args) {
 	ml_resume(caller, args[0].concat(args[1]));
 });
+ml_method_define("delete", [MLListT, MLNumberT], false, function(caller, args) {
+	let list = args[0];
+	let index = args[1] - 1;
+	if (index < 0) index += list.length + 1;
+	if (index < 0 || index >= list.length) return ml_resume(caller, null);
+	ml_resume(caller, list.splice(index, 1)[0]);
+});
 
 let equalMethod = ml_method("=");
 ml_method_define("find", [MLListT, MLAnyT], false, function(caller, args) {
