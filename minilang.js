@@ -3277,34 +3277,36 @@ export function ml_decode(value, cache) {
 	case 'boolean': return value;
 	case 'number': return value;
 	case 'string': return value;
-	case 'object':
-		if (typeof(value[0]) === 'number') {
-			if (value.length === 1) return cache[value[0]];
+	case 'object': {
+		let tag = value[0];
+		if (typeof(tag) === 'number') {
+			if (value.length === 1) return cache[tag];
 			switch (value[1]) {
 			case 'list': {
-				let list = cache[value[0]] = [];
+				let list = cache[tag] = [];
 				for (let i = 2; i < value.length; ++i) list.push(ml_decode(value[i], cache));
 				return list;
 			}
 			case 'map': {
-				let map = cache[value[0]] = ml_map();
+				let map = cache[tag] = ml_map();
 				for (let i = 2; i < value.length; i += 2) {
 					ml_map_insert(map, ml_decode(value[i], cache), ml_decode(value[i + 1], cache));
 				}
 				return map;
 			}
-			case 'global': return cache[value[0]] = ml_global(ml_decode(value[2], cache));
+			case 'global': return cache[tag] = ml_global(ml_decode(value[2], cache));
+			case 'z':
 			case 'closure': {
-				let closure = cache[value[0]] = ml_closure(ml_decode(value[2]), []);
-				for (let i = 3; i < value.length; ++i) {
-					closure.upvalues.push(ml_decode(value[i], cache));
-				}
+				let upvalues = [];
+				let closure = cache[tag] = ml_value(MLClosureT, {upvalues});
+				closure.info = ml_decode(value[2], cache);
+				for (let i = 3; i < value.length; ++i) upvalues.push(ml_decode(value[i], cache));
 				return closure;
 			}
 			default: throw `Error decoding value: ${value}`;
 			}
 		} else {
-			switch (value[0]) {
+			switch (tag) {
 			case '_':
 			case 'blank': return MLBlank;
 			case 'some': return MLSome;
@@ -3388,6 +3390,7 @@ export function ml_decode(value, cache) {
 			default: throw `Error decoding value: ${value}`;
 			}
 		}
+	}
 	}
 }
 
