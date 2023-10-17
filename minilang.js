@@ -3282,11 +3282,13 @@ export function ml_decode(value, cache) {
 		if (typeof(tag) === 'number') {
 			if (value.length === 1) return cache[tag];
 			switch (value[1]) {
+			case 'l':
 			case 'list': {
 				let list = cache[tag] = [];
 				for (let i = 2; i < value.length; ++i) list.push(ml_decode(value[i], cache));
 				return list;
 			}
+			case 'm':
 			case 'map': {
 				let map = cache[tag] = ml_map();
 				for (let i = 2; i < value.length; i += 2) {
@@ -3295,6 +3297,12 @@ export function ml_decode(value, cache) {
 				return map;
 			}
 			case 'global': return cache[tag] = ml_global(ml_decode(value[2], cache));
+			case 'v':
+			case 'variable': {
+				let variable = cache[tag] = ml_value(MLVariableT, {value: null});
+				variable.value = ml_decode(value[2], cache);
+				return variable;
+			}
 			case 'z':
 			case 'closure': {
 				let upvalues = [];
@@ -3343,6 +3351,8 @@ export function ml_decode(value, cache) {
 				return map;
 			}
 			case 'global': return ml_global(ml_decode(value[1], cache));
+			case 'v':
+			case 'variable': return ml_value(MLVariableT, {value: ml_decode(value[1], cache)});
 			case 'z':
 			case 'closure': {
 				let closure = ml_closure(ml_decode(value[1]), []);
