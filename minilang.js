@@ -2953,6 +2953,9 @@ ml_method_define("type", [MLErrorValueT], false, function(caller, args) {
 ml_method_define("message", [MLErrorValueT], false, function(caller, args) {
 	ml_resume(caller, args[0].message);
 });
+ml_method_define("raise", [MLErrorValueT], false, function(caller, args) {
+	ml_resume(caller, ml_value(MLErrorT, args[0]));
+});
 
 ml_method_define(MLJSObjectT, [], false, function(caller, args) {
 	ml_resume(caller, {});
