@@ -158,6 +158,29 @@ export function ml_identity(caller, args) {
 export const MLFunctionT = Globals["function"] = ml_type("function");
 export const MLSequenceT = ml_type("sequence");
 
+function ml_sequence_reduce(caller, sequence, callback, finish) {
+	function next_fn(state, iter) {
+		if (ml_typeof(iter) === MLErrorT) return ml_resume(caller, iter);
+		if (iter === null) return finish(caller);
+		state.iter = iter;
+		state.run = key_fn;
+		ml_iter_key(state, iter);
+	}
+	function key_fn(state, key) {
+		if (ml_typeof(key) === MLErrorT) return ml_resume(caller, key);
+		state.key = key;
+		state.run = value_fn;
+		ml_iter_value(state, state.iter);
+	}
+	function value_fn(state, value) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(caller, value);
+		callback(state.key, value);
+		state.run = next_fn;
+		ml_iter_next(state, state.iter);
+	}
+	ml_iterate({caller, run: next_fn}, sequence);
+}
+
 export const MLNilT = ml_type("nil", [], {
 	ml_hash: function(self) { return ""; },
 	unpack: function(self, index) {
@@ -2692,6 +2715,14 @@ ml_method_define("splice", [MLListT, MLNumberT, MLNumberT, MLListT], false, func
 	let other = args[3];
 	ml_resume(caller, list.splice(start, count, ...other.splice(0)));
 });
+ml_method_define("grow", [MLListT, MLSequenceT], true, function(caller, args) {
+	let list = args[0];
+	ml_sequence_reduce(caller, ml_chained(args.slice(1)), function(key, value) {
+		ml_list_put(list, value);
+	}, function() {
+		ml_resume(caller, list);
+	});
+});
 
 let equalMethod = ml_method("=");
 ml_method_define("find", [MLListT, MLAnyT], false, function(caller, args) {
@@ -2886,6 +2917,14 @@ ml_method_define("/\\", [MLMapT, MLMapT], false, function(caller, args) {
 		}
 	}
 	ml_resume(caller, map);
+});
+ml_method_define("grow", [MLMapT, MLSequenceT], true, function(caller, args) {
+	let map = args[0];
+	ml_sequence_reduce(caller, ml_chained(args.slice(1)), function(key, value) {
+		ml_map_insert(map, key, value);
+	}, function() {
+		ml_resume(caller, map);
+	});
 });
 ml_method_define("append", [MLStringBufferT, MLMapT], false, function(caller, args) {
 	let buffer = args[0];
