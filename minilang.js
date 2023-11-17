@@ -56,6 +56,10 @@ export function ml_call(caller, self, args) {
 	ml_exec(ml_typeof(self).ml_call, caller || EndState, self, args);
 }
 
+export function ml_callx(caller, self, args, run) {
+	ml_exec(ml_typeof(self).ml_call, {caller, run}, self, args);
+}
+
 export function ml_iterate(caller, self) {
 	ml_exec(ml_typeof(self).iterate, caller, self);
 }
@@ -2091,6 +2095,56 @@ ml_method_define("first2", [MLSequenceT], true, function(caller, args) {
 	ml_iterate(state, ml_chained(args));
 });
 
+function ml_sequence_extremum(compare, caller, args) {
+	let state = {caller, run: function(state, iter) {
+		if (ml_typeof(iter) === MLErrorT) {
+			return ml_resume(state.caller, iter);
+		} else if (iter == null) {
+			return ml_resume(state.caller, null);
+		}
+		state.iter = iter;
+		state.run = function(state, value) {
+			if (ml_typeof(value) === MLErrorT) {
+				return ml_resume(state.caller, iter);
+			}
+			state.value = value;
+			state.run = next_fn;
+			ml_iter_next(state, state.iter);
+		};
+		ml_iter_value(state, iter);
+	}};
+	function next_fn(state, iter) {
+		if (ml_typeof(iter) === MLErrorT) {
+			return ml_resume(state.caller, iter);
+		} else if (iter == null) {
+			return ml_resume(state.caller, state.value);
+		}
+		state.iter = iter;
+		state.run = value_fn;
+		ml_iter_value(state, iter);
+	}
+	function value_fn(state, value) {
+		if (ml_typeof(value) === MLErrorT) {
+			return ml_resume(state.caller, iter);
+		}
+		state.run = call_fn;
+		ml_call(state, compare, [state.value, value]);
+	}
+	function call_fn(state, value) {
+		if (ml_typeof(value) === MLErrorT) {
+			return ml_resume(state.caller, iter);
+		} else if (value != null) {
+			state.value = value;
+		}
+		state.run = next_fn;
+		ml_iter_next(state, state.iter);
+	}
+	ml_iterate(state, ml_chained(args));
+}
+
+Globals.min = ml_sequence_extremum.bind(null, ml_method(">"));
+Globals.max = ml_sequence_extremum.bind(null, ml_method("<"));
+
 ml_method_define("append", [MLStringBufferT, MLTypeT], false, function(caller, args) {
 	args[0].string += "<" + args[1].name + ">";
 	ml_resume(caller, args[0]);
@@ -2719,7 +2773,7 @@ ml_method_define("grow", [MLListT, MLSequenceT], true, function(caller, args) {
 	let list = args[0];
 	ml_sequence_reduce(caller, ml_chained(args.slice(1)), function(key, value) {
 		ml_list_put(list, value);
-	}, function() {
+	}, function(caller) {
 		ml_resume(caller, list);
 	});
 });
@@ -2922,7 +2976,7 @@ ml_method_define("grow", [MLMapT, MLSequenceT], true, function(caller, args) {
 	let map = args[0];
 	ml_sequence_reduce(caller, ml_chained(args.slice(1)), function(key, value) {
 		ml_map_insert(map, key, value);
-	}, function() {
+	}, function(caller) {
 		ml_resume(caller, map);
 	});
 });
