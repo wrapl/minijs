@@ -1673,12 +1673,20 @@ function ml_frame_debug_run(self, result) {
 			self.line = code[ip + 1];
 			self.ip = ip + 2;
 			return ml_iter_key(self, result);
-		case MLI_CALL:
-		case MLI_TAIL_CALL: {
+		case MLI_CALL: {
 			let count = code[ip + 2];
 			let args = stack.splice(stack.length - count, count);
 			let func = ml_deref(stack.pop());
 			let next = ip + 3;
+			self.ip = next;
+			self.line = code[ip + 1];
+			return ml_call(self, func, args);
+		}
+		case MLI_TAIL_CALL: {
+			let count = code[ip + 2];
+			let args = stack.splice(stack.length - count, count);
+			let func = ml_deref(stack.pop());
+			let next = code.length - 2;
 			self.ip = next;
 			self.line = code[ip + 1];
 			return ml_call(self, func, args);
@@ -1841,13 +1849,21 @@ function ml_frame_debug_run(self, result) {
 			break;
 		}
 		case MLI_CALL_CONST:
-		case MLI_CALL_METHOD:
+		case MLI_CALL_METHOD: {
+			let count = code[ip + 3];
+			let args = stack.splice(stack.length - count, count);
+			let func = code[ip + 2];
+			let next = ip + 4;
+			self.ip = next;
+			self.line = code[ip + 1];
+			return ml_call(self, func, args);
+		}
 		case MLI_TAIL_CALL_CONST:
 		case MLI_TAIL_CALL_METHOD: {
 			let count = code[ip + 3];
 			let args = stack.splice(stack.length - count, count);
 			let func = code[ip + 2];
-			let next = ip + 4;
+			let next = code.length - 2;
 			self.ip = next;
 			self.line = code[ip + 1];
 			return ml_call(self, func, args);
