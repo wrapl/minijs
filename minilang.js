@@ -748,6 +748,7 @@ export function ml_map_delete(map, key) {
 			} else {
 				map.tail = node.prev;
 			}
+			--map.size;
 			return node.value;
 		}
 	}
