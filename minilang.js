@@ -733,7 +733,7 @@ export function ml_map_insert(map, key, value) {
 }
 export function ml_map_delete(map, key) {
 	let hash = ml_hash(key);
-	let nodes = self.nodes[hash];
+	let nodes = map.nodes[hash];
 	if (nodes) for (let i = 0; i < nodes.length; ++i) {
 		let node = nodes[i];
 		if (node.key === key) {
