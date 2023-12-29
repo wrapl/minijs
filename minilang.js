@@ -2612,14 +2612,14 @@ ml_method_define("before", [MLStringT, MLStringT, MLNumberT], false, function(ca
 });
 ml_method_define("starts", [MLStringT, MLStringT], false, function(caller, args) {
 	if (args[0].startsWith(args[1])) {
-		return ml_resume(caller, args[1])
+		return ml_resume(caller, args[0])
 	} else {
 		return ml_resume(caller, null);
 	}
 });
 ml_method_define("ends", [MLStringT, MLStringT], false, function(caller, args) {
 	if (args[0].endsWith(args[1])) {
-		return ml_resume(caller, args[1])
+		return ml_resume(caller, args[0])
 	} else {
 		return ml_resume(caller, null);
 	}
