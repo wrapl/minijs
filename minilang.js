@@ -577,7 +577,7 @@ function ml_chained_iterator_filter(self, value) {
 		self.run = ml_chained_iterator_next;
 		ml_iter_next(self, self.iter);
 	} else {
-		ml_chained_iterator_continue(self, value);
+		ml_chained_iterator_continue(self, self.value);
 	}
 }
 function ml_chained_iterator_duo_key(self, value) {
