@@ -34,7 +34,7 @@ export function ml_typeof(self) {
 	switch (typeof(self)) {
 	case "boolean": return MLBooleanT;
 	case "string": return MLStringT;
-	case "number": return MLNumberT;
+	case "number": return Number.isInteger(self) ? MLIntegerT : MLRealT;
 	case "function": return MLJSFunctionT;
 	default: return self.ml_type;
 	}
@@ -310,7 +310,9 @@ let symbolMethod = ml_method("::");
 export const MLBooleanT = Globals["boolean"] = ml_type("boolean");
 Object.defineProperty(Boolean.prototype, "ml_type", {value: MLBooleanT});
 
-export const MLNumberT = Globals["number"] = ml_type("number", [MLFunctionT], {
+export const MLNumberT = Globals["number"] = ml_type("number", []);
+
+export const MLIntegerT = Globals["integer"] = ml_type("integer", [MLNumberT], {
 	ml_call: function(caller, self, args) {
 		let index = self - 1;
 		if (index < 0) index += args.length + 1;
@@ -323,8 +325,12 @@ export const MLNumberT = Globals["number"] = ml_type("number", [MLFunctionT], {
 		}
 	}
 });
-Globals["integer"] = Globals["real"] = MLNumberT;
-Object.defineProperty(Number.prototype, "ml_type", {value: MLNumberT});
+
+export const MLRealT = Globals["real"] = ml_type("real", [MLNumberT]);
+
+Object.defineProperty(Number.prototype, "ml_type", {get: function() {
+	return Number.isInteger(this) ? MLIntegerT : MLRealT;
+}});
 
 const MLNumberSwitchT = ml_type("number-switch", [], {
 	ml_call: function(caller, self, args) {
@@ -2260,8 +2266,7 @@ ml_method_define("append", [MLStringBufferT, MLBooleanT], false, function(caller
 	ml_resume(caller, args[0]);
 });
 
-ml_method_define(MLNumberT, [MLNumberT], false, ml_identity);
-ml_method_define(MLNumberT, [MLStringT], false, function(caller, args) {
+function ml_parse_number(caller, args) {
 	let string = args[0];
 	let result;
 	if (string === "") {
@@ -2273,7 +2278,10 @@ ml_method_define(MLNumberT, [MLStringT], false, function(caller, args) {
 		if (isNaN(result)) result = ml_error("ValueError", "Error parsing number");
 	}
 	ml_resume(caller, result);
-});
+}
+
+ml_method_define(MLNumberT, [MLNumberT], false, ml_identity);
+ml_method_define(MLNumberT, [MLStringT], false, ml_parse_number);
 
 ml_method_define("+", [MLNumberT, MLNumberT], false, function(caller, args) {
 	ml_resume(caller, args[0] + args[1]);
@@ -2290,6 +2298,14 @@ ml_method_define("/", [MLNumberT, MLNumberT], false, function(caller, args) {
 ml_method_define("%", [MLNumberT, MLNumberT], false, function(caller, args) {
 	ml_resume(caller, args[0] % args[1]);
 });
+
+ml_method_define(MLIntegerT, [MLNumberT], false, function(caller, args) {
+	return Math.floor(args[1]);
+});
+ml_method_define(MLIntegerT, [MLStringT], false, ml_parse_number);
+
+ml_method_define(MLRealT, [MLNumberT], false, ml_identity);
+ml_method_define(MLRealT, [MLStringT], false, ml_parse_number);
 
 ml_method_define("..", [MLNumberT, MLNumberT], false, function(caller, args) {
 	ml_resume(caller, ml_value(MLRangeT, {min: args[0], max: args[1], step: 1}));
