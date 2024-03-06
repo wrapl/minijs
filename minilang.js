@@ -2032,55 +2032,55 @@ Globals.error = function(caller, args) {
 Globals.print = function(caller, args) {
 	if (args.length === 0) return ml_resume(caller, null);
 	let buffer = ml_stringbuffer();
-	let state = {caller, index: 1, run: function(self, value) {
-		if (ml_typeof(value) === MLErrorT) return ml_resume(self.caller, value);
-		if (self.index === args.length) {
+	let state = {caller, index: 1, run: function(state, value) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, value);
+		if (state.index === args.length) {
 			console.log(value.string);
-			return ml_resume(self.caller, null);
+			return ml_resume(state.caller, null);
 		}
-		ml_call(self, appendMethod, [value, args[self.index++]]);
+		ml_call(state, appendMethod, [value, args[state.index++]]);
 	}};
 	ml_call(state, appendMethod, [buffer, args[0]]);
 }
 
 ml_method_define("count", [MLSequenceT], true, function(caller, args) {
-	let state = {caller, count: 0, run: function(self, value) {
+	let state = {caller, count: 0, run: function(state, value) {
 		if (ml_typeof(value) === MLErrorT) {
-			ml_resume(self.caller, value);
+			ml_resume(state.caller, value);
 		} else if (value == null) {
-			ml_resume(self.caller, self.count);
+			ml_resume(state.caller, state.count);
 		} else {
-			self.count++;
-			ml_iter_next(self, value);
+			state.count++;
+			ml_iter_next(state, value);
 		}
 	}};
 	ml_iterate(state, ml_chained(args));
 });
 
 Globals.count2 = function(caller, args) {
-	function iter_next(self, value) {
+	function iter_next(state, value) {
 		if (ml_typeof(value) === MLErrorT) {
-			ml_resume(self.caller, value);
+			ml_resume(state.caller, value);
 		} else if (value == null) {
-			ml_resume(self.caller, self.counts);
+			ml_resume(state.caller, state.counts);
 		} else {
-			self.run = iter_value;
-			ml_iter_value(self, self.iter = value);
+			state.run = iter_value;
+			ml_iter_value(state, state.iter = value);
 		}
 	}
-	function iter_value(self, value) {
+	function iter_value(state, value) {
 		if (ml_typeof(value) === MLErrorT) {
-			return ml_resume(self.caller, value);
+			return ml_resume(state.caller, value);
 		}
 		value = ml_deref(value);
-		let node = ml_map_search(self.counts, value);
+		let node = ml_map_search(state.counts, value);
 		if (node) {
 			node.value++;
 		} else {
-			ml_map_insert(self.counts, value, 1);
+			ml_map_insert(state.counts, value, 1);
 		}
-		self.run = iter_next;
-		ml_iter_next(self, self.iter);
+		state.run = iter_next;
+		ml_iter_next(state, state.iter);
 	}
 	let state = {caller, counts: ml_map(), run: iter_next};
 	ml_iterate(state, ml_chained(args));
@@ -2089,9 +2089,9 @@ Globals.count2 = function(caller, args) {
 ml_method_define("first", [MLSequenceT], true, function(caller, args) {
 	function next(state, iter) {
 		if (ml_typeof(iter) === MLErrorT) {
-			return ml_resume(self.caller, iter);
+			return ml_resume(state.caller, iter);
 		} else if (iter == null) {
-			return ml_resume(self.caller, iter);
+			return ml_resume(state.caller, iter);
 		}
 		ml_iter_value(state.caller, iter);
 	}
@@ -2099,21 +2099,21 @@ ml_method_define("first", [MLSequenceT], true, function(caller, args) {
 });
 
 ml_method_define("first2", [MLSequenceT], true, function(caller, args) {
-	let state = {caller, run: function(self, iter) {
+	let state = {caller, run: function(state, iter) {
 		if (ml_typeof(iter) === MLErrorT) {
-			return ml_resume(self.caller, iter);
+			return ml_resume(state.caller, iter);
 		} else if (iter == null) {
-			return ml_resume(self.caller, iter);
+			return ml_resume(state.caller, iter);
 		}
-		self.iter = iter;
-		self.run = function(self, value) {
-			self.key = value;
-			self.run = function(self, value) {
-				ml_resume(self.caller, ml_value(MLTupleT, {values: [self.key, value]}));
+		state.iter = iter;
+		state.run = function(state, value) {
+			state.key = value;
+			state.run = function(state, value) {
+				ml_resume(state.caller, ml_value(MLTupleT, {values: [state.key, value]}));
 			}
-			ml_iter_value(self, self.iter);
+			ml_iter_value(state, state.iter);
 		}
-		ml_iter_key(self, iter);
+		ml_iter_key(state, iter);
 	}};
 	ml_iterate(state, ml_chained(args));
 });
@@ -2430,9 +2430,9 @@ ml_method_define("append", [MLStringBufferT, MLNumberT, MLStringT], false, funct
 ml_method_define(MLStringT, [MLStringT], false, ml_identity);
 ml_method_define(MLStringT, [MLAnyT], true, function(caller, args) {
 	let buffer = ml_stringbuffer();
-	let state = {caller, run: function(self, value) {
-		if (ml_typeof(value) === MLErrorT) return ml_resume(self.caller, value);
-		ml_resume(self.caller, value.string);
+	let state = {caller, run: function(state, value) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, value);
+		ml_resume(state.caller, value.string);
 	}};
 	ml_call(state, appendMethod, [buffer].concat(args));
 });
@@ -2666,10 +2666,10 @@ ml_method_define("append", [MLStringBufferT, MLStringT], false, function(caller,
 
 ml_method_define("write", [MLStringBufferT, MLAnyT], true, function(caller, args) {
 	let start = args[0].string.length;
-	let state = {caller, index: 1, run: function(self, value) {
-		if (ml_typeof(value) === MLErrorT) return ml_resume(self.caller, value);
-		if (++self.index === args.length) return ml_resume(self.caller, value.string.length - start);
-		ml_call(state, appendMethod, [value, args[self.index]]);
+	let state = {caller, index: 1, run: function(state, value) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, value);
+		if (++state.index === args.length) return ml_resume(state.caller, value.string.length - start);
+		ml_call(state, appendMethod, [value, args[state.index]]);
 	}};
 	ml_call(state, appendMethod, [args[0], args[1]]);
 });
@@ -2689,15 +2689,15 @@ ml_method_define("append", [MLStringBufferT, MLTupleT], false, function(caller, 
 		buffer.string += "()";
 		return ml_resume(caller, args[0]);
 	}
-	let state = {caller, list, index: 1, run: function(self, value) {
-		if (ml_typeof(value) === MLErrorT) return ml_resume(self.caller, value);
-		let list = self.list;
-		if (self.index == list.length) {
+	let state = {caller, list, index: 1, run: function(state, value) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, value);
+		let list = state.list;
+		if (state.index == list.length) {
 			value.string += ")";
-			ml_resume(self.caller, value);
+			ml_resume(state.caller, value);
 		} else {
 			value.string += ", ";
-			ml_call(state, appendMethod, [value, list[self.index++]]);
+			ml_call(state, appendMethod, [value, list[state.index++]]);
 		}
 	}};
 	buffer.string += "(";
@@ -2708,25 +2708,25 @@ ml_method_define(MLListT, [MLSequenceT], true, function(caller, args) {
 	let list = [];
 	let state = {caller, list, run: iter_next};
 	ml_iterate(state, ml_chained(args));
-	function iter_next(self, value) {
+	function iter_next(state, value) {
 		if (ml_typeof(value) === MLErrorT) {
-			ml_resume(self.caller, value);
+			ml_resume(state.caller, value);
 		} else if (value == null) {
-			ml_resume(self.caller, self.list);
+			ml_resume(state.caller, state.list);
 		} else {
-			self.iter = value;
-			self.run = iter_value;
-			ml_iter_value(self, value);
+			state.iter = value;
+			state.run = iter_value;
+			ml_iter_value(state, value);
 		}
 	}
-	function iter_value(self, value) {
+	function iter_value(state, value) {
 		value = ml_deref(value);
 		if (ml_typeof(value) === MLErrorT) {
-			ml_resume(self.caller, value);
+			ml_resume(state.caller, value);
 		} else {
-			self.list.push(value);
-			self.run = iter_next;
-			ml_iter_next(self, self.iter);
+			state.list.push(value);
+			state.run = iter_next;
+			ml_iter_next(state, state.iter);
 		}
 	}
 });
@@ -2894,15 +2894,15 @@ ml_method_define("append", [MLStringBufferT, MLListT], false, function(caller, a
 		buffer.string += "[]";
 		return ml_resume(caller, args[0]);
 	}
-	let state = {caller, list, index: 1, run: function(self, value) {
-		if (ml_typeof(value) === MLErrorT) return ml_resume(self.caller, value);
-		let list = self.list;
-		if (self.index == list.length) {
+	let state = {caller, list, index: 1, run: function(state, value) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, value);
+		let list = state.list;
+		if (state.index == list.length) {
 			value.string += "]";
-			ml_resume(self.caller, value);
+			ml_resume(state.caller, value);
 		} else {
 			value.string += ", ";
-			ml_call(state, appendMethod, [value, list[self.index++]]);
+			ml_call(state, appendMethod, [value, list[state.index++]]);
 		}
 	}};
 	buffer.string += "[";
@@ -2913,35 +2913,35 @@ ml_method_define(MLMapT, [MLSequenceT], true, function(caller, args) {
 	let map = ml_map();
 	let state = {caller, map, run: iter_next};
 	ml_iterate(state, ml_chained(args));
-	function iter_next(self, value) {
+	function iter_next(state, value) {
 		if (ml_typeof(value) === MLErrorT) {
-			ml_resume(self.caller, value);
+			ml_resume(state.caller, value);
 		} else if (value == null) {
-			ml_resume(self.caller, self.map);
+			ml_resume(state.caller, state.map);
 		} else {
-			self.iter = value;
-			self.run = iter_key;
-			ml_iter_key(self, value);
+			state.iter = value;
+			state.run = iter_key;
+			ml_iter_key(state, value);
 		}
 	}
-	function iter_key(self, value) {
+	function iter_key(state, value) {
 		value = ml_deref(value);
 		if (ml_typeof(value) === MLErrorT) {
-			ml_resume(self.caller, value);
+			ml_resume(state.caller, value);
 		} else {
-			self.key = value;
-			self.run = iter_value;
-			ml_iter_value(self, self.iter);
+			state.key = value;
+			state.run = iter_value;
+			ml_iter_value(state, state.iter);
 		}
 	}
-	function iter_value(self, value) {
+	function iter_value(state, value) {
 		value = ml_deref(value);
 		if (ml_typeof(value) === MLErrorT) {
-			ml_resume(self.caller, value);
+			ml_resume(state.caller, value);
 		} else {
-			ml_map_insert(self.map, self.key, value);
-			self.run = iter_next;
-			ml_iter_next(self, self.iter);
+			ml_map_insert(state.map, state.key, value);
+			state.run = iter_next;
+			ml_iter_next(state, state.iter);
 		}
 	}
 });
@@ -3033,20 +3033,20 @@ ml_method_define("append", [MLStringBufferT, MLMapT], false, function(caller, ar
 		buffer.string += "{}";
 		return ml_resume(caller, args[0]);
 	}
-	let state = {caller, node, key: true, run: function(self, value) {
-		if (ml_typeof(value) === MLErrorT) return ml_resume(self.caller, value);
-		if (self.key) {
+	let state = {caller, node, key: true, run: function(state, value) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, value);
+		if (state.key) {
 			value.string += " is ";
-			self.key = false;
-			ml_call(state, appendMethod, [value, self.node.value]);
+			state.key = false;
+			ml_call(state, appendMethod, [value, state.node.value]);
 		} else {
-			let node = self.node.next;
+			let node = state.node.next;
 			if (!node) {
 				value.string += "}";
-				return ml_resume(self.caller, value);
+				return ml_resume(state.caller, value);
 			}
-			self.key = true;
-			self.node = node;
+			state.key = true;
+			state.node = node;
 			value.string += ", ";
 			ml_call(state, appendMethod, [value, node.key]);
 		}
@@ -3063,15 +3063,15 @@ ml_method_define("append", [MLStringBufferT, MLJSObjectT], false, function(calle
 		buffer.string += "{}";
 		return ml_resume(caller, args[0]);
 	}
-	let state = {caller, keys, object: args[1], run: function(self, value) {
-		if (ml_typeof(value) === MLErrorT) return ml_resume(self.caller, value);
-		let key = self.keys.shift();
+	let state = {caller, keys, object: args[1], run: function(state, value) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, value);
+		let key = state.keys.shift();
 		if (!key) {
 			value.string += "}";
-			return ml_resume(self.caller, value);
+			return ml_resume(state.caller, value);
 		}
 		value.string += ", " + key + ": ";
-		ml_call(state, appendMethod, [value, self.object[key]]);
+		ml_call(state, appendMethod, [value, state.object[key]]);
 	}};
 	buffer.string += "{" + key + ": ";
 	ml_call(state, appendMethod, [buffer, args[1][key]]);
@@ -3371,11 +3371,11 @@ ml_method_define("copy", [MLVisitorT, MLListT], false, function(caller, args) {
 	visitor.cache.set(list, copy);
 	if (!list.length) return ml_resume(caller, copy);
 	let index = 0;
-	let state = {caller, run: function(self, value) {
+	let state = {caller, run: function(state, value) {
 		if (ml_typeof(value) === MLErrorT) return ml_resume(caller, value);
 		copy[index++] = value;
 		if (index >= list.length) return ml_resume(caller, copy);
-		ml_call(self, visitor, [list[index]]);
+		ml_call(state, visitor, [list[index]]);
 	}};
 	return ml_call(state, visitor, [list[0]]);
 });
@@ -3387,12 +3387,12 @@ ml_method_define("copy", [MLVisitorT, MLMapT], false, function(caller, args) {
 	visitor.cache.set(map, copy);
 	if (!map.size) return ml_resume(caller, copy);
 	let node = map.head;
-	let state = {caller, run: function(self, value) {
+	let state = {caller, run: function(state, value) {
 		if (ml_typeof(value) === MLErrorT) return ml_resume(caller, value);
 		ml_map_insert(copy, node.key, value);
 		node = node.next;
 		if (!node) return ml_resume(caller, copy);
-		ml_call(self, visitor, [node.value]);
+		ml_call(state, visitor, [node.value]);
 	}};
 	return ml_call(state, visitor, [node.value]);
 });
