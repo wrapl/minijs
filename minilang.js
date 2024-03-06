@@ -312,7 +312,9 @@ Object.defineProperty(Boolean.prototype, "ml_type", {value: MLBooleanT});
 
 export const MLNumberT = Globals["number"] = ml_type("number", []);
 
-export const MLIntegerT = Globals["integer"] = ml_type("integer", [MLNumberT], {
+export const MLRealT = Globals["real"] = MLNumberT;
+
+export const MLIntegerT = Globals["integer"] = ml_type("integer", [MLRealT], {
 	ml_call: function(caller, self, args) {
 		let index = self - 1;
 		if (index < 0) index += args.length + 1;
@@ -325,8 +327,6 @@ export const MLIntegerT = Globals["integer"] = ml_type("integer", [MLNumberT], {
 		}
 	}
 });
-
-export const MLRealT = Globals["real"] = ml_type("real", [MLNumberT]);
 
 Object.defineProperty(Number.prototype, "ml_type", {get: function() {
 	return Number.isInteger(this) ? MLIntegerT : MLRealT;
@@ -2300,12 +2300,25 @@ ml_method_define("%", [MLNumberT, MLNumberT], false, function(caller, args) {
 });
 
 ml_method_define(MLIntegerT, [MLNumberT], false, function(caller, args) {
-	return Math.floor(args[1]);
+	ml_resume(caller, Math.floor(args[0]));
 });
 ml_method_define(MLIntegerT, [MLStringT], false, ml_parse_number);
 
 ml_method_define(MLRealT, [MLNumberT], false, ml_identity);
 ml_method_define(MLRealT, [MLStringT], false, ml_parse_number);
+
+[
+	"acos", "acosh", "asin", "asinh", "atan", "atanh",
+	"cos", "cosh", "sin", "sinh", "tan", "tanh",
+	"exp", "expm1", "log", "log1p", "log10", "sqrt", "cbrt",
+	"floor", "ceil", "round"
+].forEach(name => {
+	let fn = Math[name];
+	if (!fn) throw "Math." + name + " not found";
+	ml_method_define("math::" + name, [MLNumberT], false, function(caller, args) {
+		ml_resume(caller, fn(args[0]));
+	});
+});
 
 ml_method_define("..", [MLNumberT, MLNumberT], false, function(caller, args) {
 	ml_resume(caller, ml_value(MLRangeT, {min: args[0], max: args[1], step: 1}));
