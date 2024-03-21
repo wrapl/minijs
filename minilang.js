@@ -172,13 +172,13 @@ function ml_sequence_reduce(caller, sequence, callback, finish) {
 	}
 	function key_fn(state, key) {
 		if (ml_typeof(key) === MLErrorT) return ml_resume(caller, key);
-		state.key = key;
+		state.key = ml_deref(key);
 		state.run = value_fn;
 		ml_iter_value(state, state.iter);
 	}
 	function value_fn(state, value) {
 		if (ml_typeof(value) === MLErrorT) return ml_resume(caller, value);
-		callback(state.key, value);
+		callback(state.key, ml_deref(value));
 		state.run = next_fn;
 		ml_iter_next(state, state.iter);
 	}
