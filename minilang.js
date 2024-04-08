@@ -314,7 +314,7 @@ export const MLNumberT = Globals["number"] = ml_type("number", []);
 
 export const MLRealT = Globals["real"] = MLNumberT;
 
-export const MLIntegerT = Globals["integer"] = ml_type("integer", [MLRealT], {
+export const MLIntegerT = Globals["integer"] = ml_type("integer", [MLRealT, MLFunctionT], {
 	ml_call: function(caller, self, args) {
 		let index = self - 1;
 		if (index < 0) index += args.length + 1;
