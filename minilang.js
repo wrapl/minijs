@@ -853,7 +853,7 @@ const MLI_ENTER = 11;
 const MLI_EXIT = 12;
 const MLI_FOR = 13;
 const MLI_GOTO = 14;
-const MLI_IF_DEBUG = 15;
+const MLI_IF_CONFIG = 15;
 const MLI_ITER = 16;
 const MLI_KEY = 17;
 const MLI_LET = 18;
@@ -1381,7 +1381,7 @@ function ml_frame_run(self, result) {
 			self.line = code[ip + 1];
 			self.ip = ip + 3;
 			return ml_call(self, symbolMethod, [result, code[ip + 2]]);
-		case MLI_IF_DEBUG:
+		case MLI_IF_CONFIG:
 			ip += 3;
 			break;
 		case MLI_ASSIGN_LOCAL:
@@ -1832,7 +1832,7 @@ function ml_frame_debug_run(self, result) {
 			self.line = code[ip + 1];
 			self.ip = ip + 3;
 			return ml_call(self, symbolMethod, [result, code[ip + 2]]);
-		case MLI_IF_DEBUG:
+		case MLI_IF_CONFIG:
 			ip += 3;
 			break;
 		case MLI_ASSIGN_LOCAL:
