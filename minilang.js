@@ -1422,6 +1422,7 @@ function ml_frame_run(self, result) {
 			let func = code[ip + 2];
 			return ml_call(self.caller, func, args);
 		}
+		default: throw `Invalid opcode ${code[ip]}`
 		}
 	}
 }
@@ -1875,6 +1876,7 @@ function ml_frame_debug_run(self, result) {
 			self.line = code[ip + 1];
 			return ml_call(self, func, args);
 		}
+		default: throw `Invalid opcode ${code[ip]}`
 		}
 	}
 }
