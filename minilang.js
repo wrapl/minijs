@@ -927,12 +927,12 @@ export const MLClosureT = ml_type("closure", [MLFunctionT, MLSequenceT], {
 			ip: info[10],
 			ep: info[11],
 			code: info[13],
+			decls: info[14],
 			stack,
 			upvalues: self.upvalues
 		});
 		if (ml_debugger) {
 			frame.run = ml_frame_debug_run;
-			frame.decls = info[14];
 			frame.decl = frame.decls[info[12]];
 			frame.breakpoints = ml_debugger.breakpoints(frame.source);
 		}
