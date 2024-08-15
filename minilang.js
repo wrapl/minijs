@@ -1269,7 +1269,7 @@ function ml_frame_run(self, result) {
 			let index = stack.length + code[ip + 2];
 			result = stack[index];
 			if (result === undefined) {
-				result = stack[index] = ml_uninitialized(code[ip + 3]);
+				result = stack[index] = ml_uninitialized(self.decls[code[ip + 3]].name);
 			}
 			ip += 4;
 			break;
@@ -1720,7 +1720,7 @@ function ml_frame_debug_run(self, result) {
 			let index = stack.length + code[ip + 2];
 			result = stack[index];
 			if (result === undefined) {
-				result = stack[index] = ml_uninitialized(code[ip + 3]);
+				result = stack[index] = ml_uninitialized(self.decls[code[ip + 3]].name);
 			}
 			ip += 4;
 			break;
