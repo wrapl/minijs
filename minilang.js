@@ -715,6 +715,7 @@ export function ml_map_insert(map, key, value) {
 	let nodes = map.nodes[hash];
 	if (!nodes) {
 		let node = ml_value(MLMapNodeT, {key, value});
+		if (ml_typeof(value) === MLUninitializedT) ml_uninitialized_use(value, node, "value");
 		if (map.tail) {
 			map.tail.next = node;
 		} else {
@@ -729,10 +730,13 @@ export function ml_map_insert(map, key, value) {
 			if (node.key === key) { // TODO: replace with Minilang comparison
 				let old = node.value;
 				node.value = value;
+				if (ml_typeof(value) === MLUninitializedT) ml_uninitialized_use(value, node, "value");
 				return old;
 			}
 		}
-		nodes.push(ml_value(MLMapNodeT, {key, value}));
+		let node = ml_value(MLMapNodeT, {key, value});
+		if (ml_typeof(value) === MLUninitializedT) ml_uninitialized_use(value, node, "value");
+		nodes.push(node);
 	}
 	++map.size;
 	return null;
