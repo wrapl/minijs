@@ -2174,6 +2174,38 @@ function ml_sequence_extremum(compare, caller, args) {
 Globals.min = ml_sequence_extremum.bind(null, ml_method(">"));
 Globals.max = ml_sequence_extremum.bind(null, ml_method("<"));
 
+ml_method_define("join", [MLSequenceT, MLStringT], false, function(caller, args) {
+	let buffer = ml_stringbuffer();
+	let separator = args[1];
+	let state = {caller, run: join_first};
+	ml_iterate(state, args[0]);
+	function join_first(state, iter) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, iter);
+		if (iter === null) return ml_resume(state.caller, buffer.string);
+		state.iter = iter;
+		state.run = join_value;
+		ml_iter_value(state, iter);
+	}
+	function join_value(state, value) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, value);
+		state.run = join_append;
+		ml_call(state, appendMethod, [buffer, value]);
+	}
+	function join_append(state, value) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, value);
+		state.run = join_next;
+		ml_iter_next(state, state.iter);
+	}
+	function join_next(state, iter) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, iter);
+		if (iter === null) return ml_resume(state.caller, buffer.string);
+		buffer.string += separator;
+		state.iter = iter;
+		state.run = join_value;
+		ml_iter_value(state, iter);
+	}
+});
+
 ml_method_define("append", [MLStringBufferT, MLTypeT], false, function(caller, args) {
 	args[0].string += "<" + args[1].name + ">";
 	ml_resume(caller, args[0]);
