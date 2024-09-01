@@ -2180,7 +2180,7 @@ ml_method_define("join", [MLSequenceT, MLStringT], false, function(caller, args)
 	let state = {caller, run: join_first};
 	ml_iterate(state, args[0]);
 	function join_first(state, iter) {
-		if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, iter);
+		if (ml_typeof(iter) === MLErrorT) return ml_resume(state.caller, iter);
 		if (iter === null) return ml_resume(state.caller, buffer.string);
 		state.iter = iter;
 		state.run = join_value;
@@ -2197,7 +2197,7 @@ ml_method_define("join", [MLSequenceT, MLStringT], false, function(caller, args)
 		ml_iter_next(state, state.iter);
 	}
 	function join_next(state, iter) {
-		if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, iter);
+		if (ml_typeof(iter) === MLErrorT) return ml_resume(state.caller, iter);
 		if (iter === null) return ml_resume(state.caller, buffer.string);
 		buffer.string += separator;
 		state.iter = iter;
