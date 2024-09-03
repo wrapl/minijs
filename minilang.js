@@ -3498,8 +3498,7 @@ export function ml_decode(value, cache) {
 			case '_':
 			case 'blank': return MLBlank;
 			case 'some': return MLSome;
-			case 'r':
-			case 'regex': {
+			case 'r': case 'regex': {
 				let pattern = value[1];
 				if (pattern.startsWith("(?i)")) {
 					return new RegExp(pattern.substring(4), 'i');
@@ -3507,23 +3506,19 @@ export function ml_decode(value, cache) {
 					return new RegExp(pattern);
 				}
 			}
-			case ':':
-			case 'method': return ml_method(value[1]);
-			case '()': return ml_value(MLTupleT, {values: value.slice(1)});
-			case 'l':
-			case 'list': {
+			case ':': case 'method': return ml_method(value[1]);
+			case "x": case "tuple": return ml_value(MLTupleT, {values: value.slice(1)});
+			case 'l': case 'list': {
 				let list = [];
 				for (let i = 1; i < value.length; ++i) list.push(ml_decode(value[i], cache));
 				return list;
 			}
-			case 'n':
-			case 'names': {
+			case 'n': case 'names': {
 				let names = ml_names();
 				for (let i = 1; i < value.length; ++i) names.push(value[i].toString());
 				return names;
 			}
-			case 'm':
-			case 'map': {
+			case 'm': case 'map': {
 				let map = ml_map();
 				for (let i = 1; i < value.length; i += 2) {
 					ml_map_insert(map, ml_decode(value[i], cache), ml_decode(value[i + 1], cache));
@@ -3531,10 +3526,8 @@ export function ml_decode(value, cache) {
 				return map;
 			}
 			case 'global': return ml_global(ml_decode(value[1], cache));
-			case 'v':
-			case 'variable': return ml_value(MLVariableT, {value: ml_decode(value[1], cache)});
-			case 'z':
-			case 'closure': {
+			case 'v': case 'variable': return ml_value(MLVariableT, {value: ml_decode(value[1], cache)});
+			case 'z': case 'closure': {
 				let closure = ml_closure(ml_decode(value[1]), []);
 				for (let i = 2; i < value.length; ++i) {
 					closure.upvalues.push(ml_decode(value[i], cache));
@@ -3557,7 +3550,7 @@ export function ml_decode(value, cache) {
 				return value;
 			}
 			case '^': return ml_decode_global(value[1], value[2], value[3]);
-			case "array": {
+			case "a": case "array": {
 				let array = ml_array(value[1], value[2]);
 				if (value[1] === "int64" || value[1] === "uint64") {
 					array.values.set(value[3].map(BigInt));
@@ -3566,14 +3559,14 @@ export function ml_decode(value, cache) {
 				}
 				return array;
 			}
-			case "o": {
+			case "o": case "object": {
 				let fn = ObjectTypes[value[1]];
 				if (!fn) throw `Unknown object type ${value[1]}`;
 				let args = [];
 				for (let i = 2; i < value.length; ++i) args.push(ml_decode(value[i], cache));
 				return fn(args);
 			}
-			case "t": {
+			case "t": case "type": {
 				if (value[1] === "nil") return MLNilT;
 				throw `Unknown type ${value[1]}`;
 			}
