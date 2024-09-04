@@ -409,7 +409,11 @@ Object.defineProperty(RegExp.prototype, "ml_type", {value: MLRegexT});
 const MLJSFunctionT = ml_type("function", [MLFunctionT], {
 	ml_call: function(caller, self, args) {
 		for (let i = 0; i < args.length; ++i) args[i] = ml_deref(args[i]);
-		self(caller, args);
+		try {
+			self(caller, args);
+		} catch (error) {
+			ml_resume(caller, ml_error("JSError", error.toString()));
+		}
 	}
 });
 Object.defineProperty(Function.prototype, "ml_type", {value: MLJSFunctionT});
