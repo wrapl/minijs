@@ -3441,12 +3441,12 @@ ml_method_define("copy", [MLVisitorT, MLMapT], false, function(caller, args) {
 
 window.Globals = Globals;
 
-function ml_decode_global(name, source, line) {
-	let value = Globals[name];
+function ml_decode_global(globals, name, source, line) {
+	let value = globals[name];
 	if (value !== undefined) return value;
 	let index = name.lastIndexOf("::");
 	if (index !== -1) {
-		let parent = ml_decode_global(name.substring(0, index));
+		let parent = ml_decode_global(globals, name.substring(0, index), source, line);
 		if (parent && parent.exports) {
 			return parent.exports[name.substring(index + 2)];
 		}
@@ -3455,7 +3455,8 @@ function ml_decode_global(name, source, line) {
 	//return ml_uninitialized(name);
 }
 
-export function ml_decode(value, cache) {
+export function ml_decode(value, globals, cache) {
+	globals = globals || Globals;
 	cache = cache || [];
 	switch (typeof(value)) {
 	case 'boolean': return value;
@@ -3469,30 +3470,30 @@ export function ml_decode(value, cache) {
 			case 'l':
 			case 'list': {
 				let list = cache[tag] = [];
-				for (let i = 2; i < value.length; ++i) list.push(ml_decode(value[i], cache));
+				for (let i = 2; i < value.length; ++i) list.push(ml_decode(value[i], globals, cache));
 				return list;
 			}
 			case 'm':
 			case 'map': {
 				let map = cache[tag] = ml_map();
 				for (let i = 2; i < value.length; i += 2) {
-					ml_map_insert(map, ml_decode(value[i], cache), ml_decode(value[i + 1], cache));
+					ml_map_insert(map, ml_decode(value[i], globals, cache), ml_decode(value[i + 1], globals, cache));
 				}
 				return map;
 			}
-			case 'global': return cache[tag] = ml_global(ml_decode(value[2], cache));
+			case 'global': return cache[tag] = ml_global(ml_decode(value[2], globals, cache));
 			case 'v':
 			case 'variable': {
 				let variable = cache[tag] = ml_value(MLVariableT, {value: null});
-				variable.value = ml_decode(value[2], cache);
+				variable.value = ml_decode(value[2], globals, cache);
 				return variable;
 			}
 			case 'z':
 			case 'closure': {
 				let upvalues = [];
 				let closure = cache[tag] = ml_value(MLClosureT, {upvalues});
-				closure.info = ml_decode(value[2], cache);
-				for (let i = 3; i < value.length; ++i) upvalues.push(ml_decode(value[i], cache));
+				closure.info = ml_decode(value[2], globals, cache);
+				for (let i = 3; i < value.length; ++i) upvalues.push(ml_decode(value[i], globals, cache));
 				return closure;
 			}
 			default: throw `Error decoding value: ${value}`;
@@ -3514,7 +3515,7 @@ export function ml_decode(value, cache) {
 			case "x": case "tuple": return ml_value(MLTupleT, {values: value.slice(1)});
 			case 'l': case 'list': {
 				let list = [];
-				for (let i = 1; i < value.length; ++i) list.push(ml_decode(value[i], cache));
+				for (let i = 1; i < value.length; ++i) list.push(ml_decode(value[i], globals, cache));
 				return list;
 			}
 			case 'n': case 'names': {
@@ -3525,16 +3526,16 @@ export function ml_decode(value, cache) {
 			case 'm': case 'map': {
 				let map = ml_map();
 				for (let i = 1; i < value.length; i += 2) {
-					ml_map_insert(map, ml_decode(value[i], cache), ml_decode(value[i + 1], cache));
+					ml_map_insert(map, ml_decode(value[i], globals, cache), ml_decode(value[i + 1], globals, cache));
 				}
 				return map;
 			}
-			case 'global': return ml_global(ml_decode(value[1], cache));
-			case 'v': case 'variable': return ml_value(MLVariableT, {value: ml_decode(value[1], cache)});
+			case 'global': return ml_global(ml_decode(value[1], globals, cache));
+			case 'v': case 'variable': return ml_value(MLVariableT, {value: ml_decode(value[1], globals, cache)});
 			case 'z': case 'closure': {
-				let closure = ml_closure(ml_decode(value[1]), []);
+				let closure = ml_closure(ml_decode(value[1], globals, cache), []);
 				for (let i = 2; i < value.length; ++i) {
-					closure.upvalues.push(ml_decode(value[i], cache));
+					closure.upvalues.push(ml_decode(value[i], globals, cache));
 				}
 				return closure;
 			}
@@ -3542,7 +3543,7 @@ export function ml_decode(value, cache) {
 				if (value[1] !== ML_BYTECODE_VERSION) throw 'Bytecode version mismatch';
 				let code = value[13];
 				for (let i = 0; i < code.length; ++i) {
-					if (code[i] instanceof Array) code[i] = ml_decode(code[i], cache);
+					if (code[i] instanceof Array) code[i] = ml_decode(code[i], globals, cache);
 				}
 				let decls = value[14].map(() => { return {}; });
 				for (let i = 0; i < value[14].length; ++i) {
@@ -3567,7 +3568,7 @@ export function ml_decode(value, cache) {
 				let fn = ObjectTypes[value[1]];
 				if (!fn) throw `Unknown object type ${value[1]}`;
 				let args = [];
-				for (let i = 2; i < value.length; ++i) args.push(ml_decode(value[i], cache));
+				for (let i = 2; i < value.length; ++i) args.push(ml_decode(value[i], globals, cache));
 				return fn(args);
 			}
 			case "t": case "type": {
@@ -3582,6 +3583,6 @@ export function ml_decode(value, cache) {
 }
 
 //let json = ["closure",["!","",0,8,0,0,0,0,[],0,72,[15,0,0,1,51,1,["!","",1,6,1,1,0,0,["N"],0,49,[42,2,0,23,2,2,39,2,2,["method","<"],7,2,18,22,3,1,1,3,42,5,0,43,5,0,10,5,42,5,0,23,5,1,39,5,2,["method","-"],10,5,38,5,1,10,5,39,5,2,["method","*"],1,5,1,7]],0,28,1,-1,23,9,1,23,9,10,39,9,2,["method",".."],33,9,34,9,69,36,9,-1,11,9,23,10,["^","print"],56,10,58,10,"fact(20) = ",42,10,0,23,10,20,38,10,1,10,10,57,10,1,58,10,"\n",59,10,10,10,38,10,1,16,9,1,35,9,23,16,11,1,1,11]]];
-//let main = ml_decode(json, []);
+//let main = ml_decode(json, Globals, []);
 
 //ml_call(EndState, main, []);
