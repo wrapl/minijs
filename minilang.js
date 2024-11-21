@@ -718,30 +718,26 @@ export function ml_map_insert(map, key, value) {
 	let hash = ml_hash(key);
 	let nodes = map.nodes[hash];
 	if (!nodes) {
-		let node = ml_value(MLMapNodeT, {key, value});
-		if (ml_typeof(value) === MLUninitializedT) ml_uninitialized_use(value, node, "value");
-		if (map.tail) {
-			map.tail.next = node;
-		} else {
-			map.head = node;
+		nodes = map.nodes[hash] = [];
+	} else for (let i = 0; i < nodes.length; ++i) {
+		let node = nodes[i];
+		if (node.key === key) { // TODO: replace with Minilang comparison
+			let old = node.value;
+			node.value = value;
+			if (ml_typeof(value) === MLUninitializedT) ml_uninitialized_use(value, node, "value");
+			return old;
 		}
-		node.prev = map.tail;
-		map.tail = node;
-		nodes = map.nodes[hash] = [node];
-	} else {
-		for (let i = 0; i < nodes.length; ++i) {
-			let node = nodes[i];
-			if (node.key === key) { // TODO: replace with Minilang comparison
-				let old = node.value;
-				node.value = value;
-				if (ml_typeof(value) === MLUninitializedT) ml_uninitialized_use(value, node, "value");
-				return old;
-			}
-		}
-		let node = ml_value(MLMapNodeT, {key, value});
-		if (ml_typeof(value) === MLUninitializedT) ml_uninitialized_use(value, node, "value");
-		nodes.push(node);
 	}
+	let node = ml_value(MLMapNodeT, {key, value});
+	if (ml_typeof(value) === MLUninitializedT) ml_uninitialized_use(value, node, "value");
+	nodes.push(node);
+	if (map.tail) {
+		map.tail.next = node;
+	} else {
+		map.head = node;
+	}
+	node.prev = map.tail;
+	map.tail = node;
 	++map.size;
 	return null;
 }
@@ -3554,7 +3550,7 @@ export function ml_decode(value, globals, cache) {
 				value[14] = decls;
 				return value;
 			}
-			case '^': return ml_decode_global(value[1], value[2], value[3]);
+			case '^': return ml_decode_global(globals, value[1], value[2], value[3]);
 			case "a": case "array": {
 				let array = ml_array(value[1], value[2]);
 				if (value[1] === "int64" || value[1] === "uint64") {

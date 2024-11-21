@@ -24,6 +24,9 @@
 <div id="output"/>
 <script type="module">
 import { Globals, ml_call, ml_resume, ml_decode, MLNil, MLStringT, ml_debug, ml_deref } from './minilang.js';
+import * as Minilang from './minilang.js';
+
+window.Minilang = Minilang;
 
 let inputElement = document.getElementById("input");
 let bytecodeElement = document.getElementById("compiled");
