@@ -2294,6 +2294,14 @@ ml_method_define(">=", [MLAnyT, MLAnyT], false, function(caller, args) {
 	ml_resume(caller, args[0] >= args[1] ? args[1] : null);
 });
 
+["=", "!=", "<", ">", "<=", ">="].forEach(function(op) {
+	ml_method_define(op, [MLNilT, MLAnyT], false, function(caller, args) {
+		ml_resume(caller, null);
+	});
+	ml_method_define(op, [MLAnyT, MLNilT], false, function(caller, args) {
+		ml_resume(caller, null);
+	});
+});
 
 ml_method_define("->", [MLFunctionT, MLFunctionT], false, function(caller, args) {
 	ml_resume(caller, ml_chained([args[0], args[1]]));
