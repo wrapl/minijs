@@ -77,6 +77,9 @@ export function ml_iter_value(caller, self) {
 }
 
 export function ml_unpack(self, index) {
+	let unpack = ml_typeof(self).unpack;
+	if (unpack) return unpack(self, index);
+	self = ml_deref(self);
 	return ml_typeof(self).unpack(self, index);
 }
 
