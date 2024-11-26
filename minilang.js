@@ -2209,6 +2209,59 @@ ml_method_define("join", [MLSequenceT, MLStringT], false, function(caller, args)
 	}
 });
 
+const MLLimitedIterT = ml_type("limited-iter", [], {
+	iter_next: function(caller, self) {
+		if (--self.limit === 0) return ml_resume(caller, null);
+		return ml_iter_next(self, self.iter);
+	},
+	iter_key: function(caller, self) {
+		return ml_iter_key(caller, self.iter);
+	},
+	iter_value: function(caller, self) {
+		return ml_iter_value(caller, self.iter);
+	}
+});
+
+const MLLimitedT = ml_type("limited", [MLSequenceT], {
+	iterate: function(caller, self) {
+		if (self.limit == 0) return ml_resume(caller, null);
+		let state = ml_value(MLLimitedIterT, {
+			caller, limit: self.limit,
+			run: function(state, iter) {
+				if (ml_typeof(iter) === MLErrorT) return ml_resume(caller, iter);
+				if (iter === null) return ml_resume(caller, iter);
+				state.iter = iter;
+				ml_resume(caller, state);
+			}
+		});
+		return ml_iterate(state, self.sequence);
+	}
+});
+
+ml_method_define("limit", [MLSequenceT, MLNumberT], false, function(caller, args) {
+	ml_resume(caller, ml_value(MLLimitedT, {sequence: args[0], limit: args[1]}));
+});
+
+const MLSkippedT = ml_type("skipped", [MLSequenceT], {
+	iterate: function(caller, self) {
+		if (self.skip === 0) return ml_iterate(caller, self.sequence);
+		let state = {
+			caller, skip: self.skip + 1,
+			run: function(state, iter) {
+				if (ml_typeof(iter) === MLErrorT) return ml_resume(caller, iter);
+				if (iter === null) return ml_resume(caller, iter);
+				if (--state.skip === 0) return ml_resume(caller, iter);
+				return ml_iter_next(state, iter);
+			}
+		};
+		return ml_iterate(state, self.sequence);
+	}
+});
+
+ml_method_define("skip", [MLSequenceT, MLNumberT], false, function(caller, args) {
+	ml_resume(caller, ml_value(MLSkippedT, {sequence: args[0], skip: args[1]}));
+});
+
 ml_method_define("append", [MLStringBufferT, MLTypeT], false, function(caller, args) {
 	args[0].string += "<" + args[1].name + ">";
 	ml_resume(caller, args[0]);
