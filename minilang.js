@@ -3512,6 +3512,36 @@ ml_method_define("copy", [MLVisitorT, MLMapT], false, function(caller, args) {
 	return ml_call(state, visitor, [node.value]);
 });
 
+export const XmlT = Globals["xml"] = ml_type("xml", [MLJSObjectT]);
+
+Object.defineProperty(Node.prototype, "ml_type", {value: XmlT});
+
+const XmlElementT = ml_type("xml::element", [MLJSObjectT]);
+XmlT.exports["element"] = XmlElementT;
+Object.defineProperty(Element.prototype, "ml_type", {value: XmlElementT});
+
+ml_method_define(XmlElementT, [MLStringT], true, function(caller, args) {
+	let element = document.createElement(args[0]);
+	function append(value) {
+		if (ml_is(value, MLMapT)) {
+			value.forEach((key, value) => element.setAttribute(key, value));
+		} else if (ml_is(value, MLStringT)) {
+			element.appendChild(document.createTextNode(value));
+		} else if (ml_is(value, XmlElementT)) {
+			element.appendChild(value);
+		} else {
+			value.forEach(append);
+		}
+	}
+	for (let i = 1; i < args.length; ++i) append(args[i]);
+	ml_resume(caller, element);
+});
+
+ml_method_define("append", [MLStringBufferT, XmlElementT], false, function(caller, args) {
+	args[0].string += args[1].outerHTML;
+	ml_resume(caller, args[0]);
+});
+
 window.Globals = Globals;
 
 function ml_decode_global(globals, name, source, line) {
