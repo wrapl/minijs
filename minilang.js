@@ -229,6 +229,15 @@ export function ml_error(type, message) {
 export function ml_error_trace_add(error, source, line) {
 	error.stack.push([source, line]);
 }
+Globals["error"] = function(caller, args) {
+	ml_resume(caller, ml_error(args[0], args[1]));
+};
+Globals["raise"] = function(caller, args) {
+	let type = args[0];
+	let message = "";
+	let value = args[1];
+	ml_resume(caller, ml_value(MLErrorT, {type, message, value, stack: []}));
+};
 
 export const MLErrorValueT = ml_type("error-value");
 export function ml_error_value(error) {
