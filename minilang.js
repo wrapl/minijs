@@ -2450,8 +2450,7 @@ ml_method_define("..", [MLRangeT, MLNumberT], false, function(caller, args) {
 	ml_resume(caller, ml_value(MLRangeT, {min: args[0].min, max: args[0].max, step: args[1]}));
 });
 ml_method_define("by", [MLRangeT, MLNumberT], false, function(caller, args) {
-	let range = args[0];
-	ml_resume(caller, ml_value(MLRangeT, {min: range.min, max: range.max, step: args[1]}));
+	ml_resume(caller, ml_value(MLRangeT, {min: args[0].min, max: args[0].max, step: args[1]}));
 });
 
 ml_method_define("append", [MLStringBufferT, MLNumberT], false, function(caller, args) {
