@@ -2073,6 +2073,34 @@ Globals.print = function(caller, args) {
 	ml_call(state, appendMethod, [buffer, args[0]]);
 }
 
+ml_method_define("!", [MLFunctionT, MLListT], false, function(caller, args) {
+	let values = [];
+	args[1].forEach(value => values.push(value));
+	return ml_call(caller, args[0], values);
+});
+
+ml_method_define("!", [MLFunctionT, MLMapT], false, function(caller, args) {
+	let names = ml_names();
+	let values = [names];
+	args[1].forEach((key, value) => {
+		names.push(key);
+		values.push(value);
+	});
+	return ml_call(caller, args[0], values);
+});
+
+ml_method_define("!", [MLFunctionT, MLListT, MLMapT], false, function(caller, args) {
+	let values = [];
+	args[1].forEach(value => values.push(value));
+	let names = ml_names();
+	values.push(names);
+	args[2].forEach((key, value) => {
+		names.push(key);
+		values.push(value);
+	});
+	return ml_call(caller, args[0], values);
+});
+
 ml_method_define("count", [MLSequenceT], true, function(caller, args) {
 	let state = {caller, count: 0, run: function(state, value) {
 		if (ml_typeof(value) === MLErrorT) {
