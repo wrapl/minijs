@@ -796,13 +796,15 @@ const MLMapIndexT = ml_type("map-index", [], {
 const MLMapTemplateT = ml_type("map::template", [MLFunctionT], {
 	ml_call: function(caller, self, args) {
 		let map = ml_map();
-		let keys = self.keys;
-		for (let i = 0; i < keys.length; ++i) ml_map_insert(map, keys[i], ml_deref(args[i]));
+		let template = self.template;
+		for (let i = 0; i < template.length; i += 2) {
+			ml_map_insert(map, template[i], ml_deref(args[template[i + 1]]));
+		}
 		return ml_resume(caller, map);
 	}
 });
 ObjectTypes["map::template"] = function(args) {
-	return ml_value(MLMapTemplateT, {keys: args});
+	return ml_value(MLMapTemplateT, {template: args});
 };
 
 const MLVariableT = ml_type("variable", [], {
