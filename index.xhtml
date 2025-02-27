@@ -55,6 +55,14 @@ Globals.print = function(caller, args) {
 	ml_call(state, MLStringT.of, [args[0]]);
 }
 
+let breakpoints = {};
+let debug = {
+	run: debugger_run,
+	breakpoints: function(source) {
+		return breakpoints[source] || (breakpoints[source] = []);
+	}
+};
+
 compileElement.onclick = function() {
 	let request = new XMLHttpRequest();
 	request.onreadystatechange = function() {
@@ -63,7 +71,11 @@ compileElement.onclick = function() {
 				let json = request.responseText;
 				bytecodeElement.textContent = json;
 				try {
-					window.main = ml_decode(JSON.parse(json));
+					if (debugElement.checked) {
+						window.main = ml_decode(JSON.parse(json), null, debug);
+					} else {
+						window.main = ml_decode(JSON.parse(json));
+					}
 				} catch (error) {
 					consoleElement.textContent = error;
 				}
@@ -78,21 +90,8 @@ compileElement.onclick = function() {
 	request.send('input=' + encodeURIComponent(input.value));
 }
 
-let breakpoints = {};
-let debug = {
-	run: debugger_run,
-	breakpoints: function(source) {
-		return breakpoints[source] || (breakpoints[source] = []);
-	}
-};
-
 executeElement.onclick = function() {
-	if (debugElement.checked) {
-		debug.step_in = true;
-		ml_debug(debug);
-	} else {
-		ml_debug(null);
-	}
+	debug.step_in = true;
 	consoleElement.textContent = "";
 	ml_call(null, window.main, []);
 }
