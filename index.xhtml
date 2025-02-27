@@ -23,7 +23,7 @@
 <pre id="console"/>
 <div id="output"/>
 <script type="module">
-import { Globals, ml_call, ml_resume, ml_decode, MLNil, MLStringT, ml_debug, ml_deref } from './minilang.js';
+import { Globals, ml_call, ml_resume, ml_decode, MLNil, MLStringT, ml_deref } from './minilang.js';
 import * as Minilang from './minilang.js';
 
 window.Minilang = Minilang;
@@ -70,15 +70,7 @@ compileElement.onclick = function() {
 			if (request.status === 200) {
 				let json = request.responseText;
 				bytecodeElement.textContent = json;
-				try {
-					if (debugElement.checked) {
-						window.main = ml_decode(JSON.parse(json), null, debug);
-					} else {
-						window.main = ml_decode(JSON.parse(json));
-					}
-				} catch (error) {
-					consoleElement.textContent = error;
-				}
+				window.bytecode = JSON.parse(json);
 			} else {
 				consoleElement.textContent = request.responseText;
 			}
@@ -91,7 +83,16 @@ compileElement.onclick = function() {
 }
 
 executeElement.onclick = function() {
-	debug.step_in = true;
+	try {
+		if (debugElement.checked) {
+			debug.step_in = true;
+			window.main = ml_decode(window.bytecode, null, debug);
+		} else {
+			window.main = ml_decode(window.bytecode);
+		}
+	} catch (error) {
+		consoleElement.textContent = error;
+	}
 	consoleElement.textContent = "";
 	ml_call(null, window.main, []);
 }

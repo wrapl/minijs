@@ -955,11 +955,11 @@ export const MLClosureT = ml_type("closure", [MLFunctionT, MLSequenceT], {
 			stack,
 			upvalues: self.upvalues
 		});
-		if (self.ml_debugger) {
-			frame.ml_debugger = self.ml_debugger;
+		if (self.debugger) {
+			frame.debugger = self.debugger;
 			frame.run = ml_frame_debug_run;
 			frame.decl = frame.decls[info[12]];
-			frame.breakpoints = self.ml_debugger.breakpoints(frame.source);
+			frame.breakpoints = self.debugger.breakpoints(frame.source);
 		}
 		let numParams = info[5];
 		let extraArgs = info[7];
@@ -1458,7 +1458,7 @@ function ml_frame_debug_run(self, result) {
 			self.reentry = false;
 		} else {
 			self.reentry = true;
-			return ml_exec(self.ml_debugger.run, self, result);
+			return ml_exec(self.debugger.run, self, result);
 		}
 		ml_error_trace_add(result, self.source, self.line);
 		ip = self.ep;
@@ -1471,11 +1471,11 @@ function ml_frame_debug_run(self, result) {
 			self.reentry = false;
 		} else if (code[ip + 1] != line) {
 			line = code[ip + 1];
-			if (self.ml_debugger.step_in || self.step_over || self.breakpoints[line]) {
+			if (self.debugger.step_in || self.step_over || self.breakpoints[line]) {
 				self.ip = ip;
 				self.line = line;
 				self.reentry = true;
-				return ml_exec(self.ml_debugger.run, self, result);
+				return ml_exec(self.debugger.run, self, result);
 			}
 		}
 		switch (code[ip]) {
@@ -3595,7 +3595,7 @@ function ml_decode_global(globals, name, source, line) {
 	//return ml_uninitialized(name);
 }
 
-export function ml_decode(value, globals, ml_debugger, cache) {
+export function ml_decode(value, globals, _debugger, cache) {
 	globals = globals || Globals;
 	cache = cache || [];
 	switch (typeof(value)) {
@@ -3610,7 +3610,7 @@ export function ml_decode(value, globals, ml_debugger, cache) {
 			case 'l':
 			case 'list': {
 				let list = cache[tag] = [];
-				for (let i = 2; i < value.length; ++i) list.push(ml_decode(value[i], globals, ml_debugger, cache));
+				for (let i = 2; i < value.length; ++i) list.push(ml_decode(value[i], globals, _debugger, cache));
 				return list;
 			}
 			case 'm':
@@ -3618,25 +3618,25 @@ export function ml_decode(value, globals, ml_debugger, cache) {
 				let map = cache[tag] = ml_map();
 				for (let i = 2; i < value.length; i += 2) {
 					ml_map_insert(map,
-						ml_decode(value[i], globals, ml_debugger, cache),
-						ml_decode(value[i + 1], globals, ml_debugger, cache)
+						ml_decode(value[i], globals, _debugger, cache),
+						ml_decode(value[i + 1], globals, _debugger, cache)
 					);
 				}
 				return map;
 			}
-			case 'global': return cache[tag] = ml_global(ml_decode(value[2], globals, ml_debugger, cache));
+			case 'global': return cache[tag] = ml_global(ml_decode(value[2], globals, _debugger, cache));
 			case 'v':
 			case 'variable': {
 				let variable = cache[tag] = ml_value(MLVariableT, {value: null});
-				variable.value = ml_decode(value[2], globals, ml_debugger, cache);
+				variable.value = ml_decode(value[2], globals, _debugger, cache);
 				return variable;
 			}
 			case 'z':
 			case 'closure': {
 				let upvalues = [];
-				let closure = cache[tag] = ml_value(MLClosureT, {upvalues, ml_debugger});
-				closure.info = ml_decode(value[2], globals, ml_debugger, cache);
-				for (let i = 3; i < value.length; ++i) upvalues.push(ml_decode(value[i], globals, ml_debugger, cache));
+				let closure = cache[tag] = ml_value(MLClosureT, {upvalues, "debugger": _debugger});
+				closure.info = ml_decode(value[2], globals, _debugger, cache);
+				for (let i = 3; i < value.length; ++i) upvalues.push(ml_decode(value[i], globals, _debugger, cache));
 				return closure;
 			}
 			default: throw `Error decoding value: ${value}`;
@@ -3658,7 +3658,7 @@ export function ml_decode(value, globals, ml_debugger, cache) {
 			case "x": case "tuple": return ml_value(MLTupleT, {values: value.slice(1)});
 			case 'l': case 'list': {
 				let list = [];
-				for (let i = 1; i < value.length; ++i) list.push(ml_decode(value[i], globals, ml_debugger, cache));
+				for (let i = 1; i < value.length; ++i) list.push(ml_decode(value[i], globals, _debugger, cache));
 				return list;
 			}
 			case 'n': case 'names': {
@@ -3669,16 +3669,17 @@ export function ml_decode(value, globals, ml_debugger, cache) {
 			case 'm': case 'map': {
 				let map = ml_map();
 				for (let i = 1; i < value.length; i += 2) {
-					ml_map_insert(map, ml_decode(value[i], globals, ml_debugger, cache), ml_decode(value[i + 1], globals, ml_debugger, cache));
+					ml_map_insert(map, ml_decode(value[i], globals, _debugger, cache), ml_decode(value[i + 1], globals, _debugger, cache));
 				}
 				return map;
 			}
-			case 'global': return ml_global(ml_decode(value[1], globals, ml_debugger, cache));
-			case 'v': case 'variable': return ml_value(MLVariableT, {value: ml_decode(value[1], globals, ml_debugger, cache)});
+			case 'global': return ml_global(ml_decode(value[1], globals, _debugger, cache));
+			case 'v': case 'variable': return ml_value(MLVariableT, {value: ml_decode(value[1], globals, _debugger, cache)});
 			case 'z': case 'closure': {
-				let closure = ml_closure(ml_decode(value[1], globals, ml_debugger, cache), []);
+				let closure = ml_closure(ml_decode(value[1], globals, _debugger, cache), []);
+				closure.debugger = _debugger;
 				for (let i = 2; i < value.length; ++i) {
-					closure.upvalues.push(ml_decode(value[i], globals, ml_debugger, cache));
+					closure.upvalues.push(ml_decode(value[i], globals, _debugger, cache));
 				}
 				return closure;
 			}
@@ -3686,7 +3687,7 @@ export function ml_decode(value, globals, ml_debugger, cache) {
 				if (value[1] !== ML_BYTECODE_VERSION) throw 'Bytecode version mismatch';
 				let code = value[13];
 				for (let i = 0; i < code.length; ++i) {
-					if (code[i] instanceof Array) code[i] = ml_decode(code[i], globals, ml_debugger, cache);
+					if (code[i] instanceof Array) code[i] = ml_decode(code[i], globals, _debugger, cache);
 				}
 				let decls = value[14].map(() => { return {}; });
 				for (let i = 0; i < value[14].length; ++i) {
@@ -3711,7 +3712,7 @@ export function ml_decode(value, globals, ml_debugger, cache) {
 				let fn = ObjectTypes[value[1]];
 				if (!fn) throw `Unknown object type ${value[1]}`;
 				let args = [];
-				for (let i = 2; i < value.length; ++i) args.push(ml_decode(value[i], globals, ml_debugger, cache));
+				for (let i = 2; i < value.length; ++i) args.push(ml_decode(value[i], globals, _debugger, cache));
 				return fn(args);
 			}
 			case "t": case "type": {
