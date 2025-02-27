@@ -1804,7 +1804,7 @@ function ml_frame_debug_run(self, result) {
 				if (ml_typeof(value) === MLUninitializedT) ml_uninitialized_use(value, upvalues, i);
 				upvalues[i] = value;
 			}
-			result = ml_closure(info, upvalues);
+			result = ml_closure(info, upvalues, self.debugger);
 			ip += 3 + upvalues.length;
 			break;
 		}
@@ -1905,8 +1905,8 @@ function ml_frame_debug_run(self, result) {
 		}
 	}
 }
-export function ml_closure(info, upvalues) {
-	return ml_value(MLClosureT, {info, upvalues});
+export function ml_closure(info, upvalues, _debugger) {
+	return ml_value(MLClosureT, {info, upvalues, "debugger": _debugger});
 }
 
 export const MLModuleT = ml_type("module");
@@ -3676,8 +3676,7 @@ export function ml_decode(value, globals, _debugger, cache) {
 			case 'global': return ml_global(ml_decode(value[1], globals, _debugger, cache));
 			case 'v': case 'variable': return ml_value(MLVariableT, {value: ml_decode(value[1], globals, _debugger, cache)});
 			case 'z': case 'closure': {
-				let closure = ml_closure(ml_decode(value[1], globals, _debugger, cache), []);
-				closure.debugger = _debugger;
+				let closure = ml_closure(ml_decode(value[1], globals, _debugger, cache), [], _debugger);
 				for (let i = 2; i < value.length; ++i) {
 					closure.upvalues.push(ml_decode(value[i], globals, _debugger, cache));
 				}
