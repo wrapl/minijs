@@ -259,11 +259,8 @@ export const MLMethodT = Globals["method"] = ml_type("method", [MLFunctionT], {
 		if (!func) {
 			let bestScore = 0;
 			let bestFunc = null;
-			let count = args.length;
 			for (let i = 0; i < self.definitions.length; ++i) {
 				let definition = self.definitions[i];
-				if (definition.count > count) continue;
-				if (definition.count < count && !definition.variadic) continue;
 				let score = score_definition(definition.types, args);
 				if (score > bestScore) {
 					bestScore = score;
@@ -281,10 +278,18 @@ export const MLMethodT = Globals["method"] = ml_type("method", [MLFunctionT], {
 		return ml_call(caller, func, args);
 
 		function score_definition(types, args) {
+			let numtypes = types.length;
+			let numargs = args.length;
+			if (numtypes > numargs) return 0;
 			let score = 1;
-			for (let i = 0; i < types.length; ++i) {
+			if (numtypes < numargs) {
+				if (!definition.variadic) return 0;
+			} else {
+				score = 2;
+			}
+			for (let i = 0; i < numargs; ++i) {
 				let type = types[i];
-				if (ml_typeof(args[i]).parents.indexOf(type) === -1) return -1;
+				if (ml_typeof(args[i]).parents.indexOf(type) === -1) return 0;
 				score += type.rank;
 			}
 			return score;
