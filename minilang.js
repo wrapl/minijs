@@ -288,7 +288,7 @@ export const MLMethodT = Globals["method"] = ml_type("method", [MLFunctionT], {
 			} else {
 				score = 2;
 			}
-			for (let i = 0; i < numargs; ++i) {
+			for (let i = 0; i < numtypes; ++i) {
 				let type = types[i];
 				if (ml_typeof(args[i]).parents.indexOf(type) === -1) return 0;
 				score += type.rank;
