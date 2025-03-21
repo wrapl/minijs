@@ -261,7 +261,7 @@ export const MLMethodT = Globals["method"] = ml_type("method", [MLFunctionT], {
 			let bestFunc = null;
 			for (let i = 0; i < self.definitions.length; ++i) {
 				let definition = self.definitions[i];
-				let score = score_definition(definition.types, args);
+				let score = score_definition(definition, args);
 				if (score > bestScore) {
 					bestScore = score;
 					bestFunc = definition.func;
@@ -277,7 +277,8 @@ export const MLMethodT = Globals["method"] = ml_type("method", [MLFunctionT], {
 		}
 		return ml_call(caller, func, args);
 
-		function score_definition(types, args) {
+		function score_definition(definition, args) {
+			let types = definition.types;
 			let numtypes = types.length;
 			let numargs = args.length;
 			if (numtypes > numargs) return 0;
