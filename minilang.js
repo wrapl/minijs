@@ -2314,6 +2314,61 @@ ml_method_define("skip", [MLSequenceT, MLNumberT], false, function(caller, args)
 	ml_resume(caller, ml_value(MLSkippedT, {sequence: args[0], skip: args[1]}));
 });
 
+const MLUniqueIterT = ml_type("unique-iter", [], {
+	iter_next: function(caller, self) {
+		let state = {
+			caller,
+			run: function(state, iter) {
+				if (ml_typeof(iter) === MLErrorT) return ml_resume(caller, iter);
+				if (iter === null) return ml_resume(caller, null);
+				self.iter = iter;
+				let state2 = {
+					caller,
+					run: function(state2, value) {
+						if (ml_typeof(value) === MLErrorT) return ml_resume(caller, value);
+						if (ml_map_search(self.history, value)) return ml_iter_next(state, iter);
+						ml_map_insert(self.history, value, value);
+						self.value = value;
+						return ml_resume(caller, self);
+					}
+				}
+				return ml_iter_value(state2, iter);
+			}
+		};
+		return ml_iter_next(state, self.iter);
+	},
+	iter_key: function(caller, self) {
+		return ml_iter_key(caller, self.iter);
+	},
+	iter_value: function(caller, self) {
+		return ml_resume(caller, self.value);
+	}
+});
+
+const MLUniqueT = ml_type("unique", [MLSequenceT], {
+	iterate: function(caller, self) {
+		let state = {
+			caller,
+			run: function(state, iter) {
+				if (ml_typeof(iter) === MLErrorT) return ml_resume(caller, iter);
+				if (iter === null) return ml_resume(caller, null);
+				state.run = function(state, value) {
+					if (ml_typeof(value) === MLErrorT) return ml_resume(caller, value);
+					let history = ml_map();
+					ml_map_insert(history, value, value);
+					return ml_resume(caller, ml_value(MLUniqueIterT, {iter, history, value}));
+				};
+				return ml_iter_value(state, iter);
+			}
+		};
+		return ml_iterate(state, self.sequence);
+	}
+});
+
+Globals.unique = function(caller, args) {
+	ml_resume(caller, ml_value(MLUniqueT, {sequence: ml_chained(args)}));
+};
+
 ml_method_define("append", [MLStringBufferT, MLTypeT], false, function(caller, args) {
 	args[0].string += "<" + args[1].name + ">";
 	ml_resume(caller, args[0]);
