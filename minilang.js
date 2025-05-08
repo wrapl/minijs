@@ -2325,8 +2325,9 @@ const MLUniqueIterT = ml_type("unique-iter", [], {
 				let state2 = {
 					caller,
 					run: function(state2, value) {
+						value = ml_deref(value);
 						if (ml_typeof(value) === MLErrorT) return ml_resume(caller, value);
-						if (ml_map_insert(self.history, ml_deref(value), MLSome) === null) {
+						if (ml_map_insert(self.history, value, MLSome) === null) {
 							self.value = value;
 							return ml_resume(caller, self);
 						}
@@ -2354,9 +2355,10 @@ const MLUniqueT = ml_type("unique", [MLSequenceT], {
 				if (ml_typeof(iter) === MLErrorT) return ml_resume(caller, iter);
 				if (iter === null) return ml_resume(caller, null);
 				state.run = function(state, value) {
+					value = ml_deref(value);
 					if (ml_typeof(value) === MLErrorT) return ml_resume(caller, value);
 					let history = ml_map();
-					ml_map_insert(history, ml_deref(value), MLSome);
+					ml_map_insert(history, value, MLSome);
 					return ml_resume(caller, ml_value(MLUniqueIterT, {iter, history, value}));
 				};
 				return ml_iter_value(state, iter);
