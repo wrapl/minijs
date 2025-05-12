@@ -2722,10 +2722,10 @@ ml_method_define("find", [MLStringT, MLStringT], false, function(caller, args) {
 	ml_resume(caller, index < 0 ? null : index + 1);
 });
 ml_method_define("/", [MLStringT, MLStringT], false, function(caller, args) {
-	ml_resume(caller, args[0].split(args[1]));
+	ml_resume(caller, args[0].split(args[1]).filter(Boolean));
 });
 ml_method_define("/", [MLStringT, MLRegexT], false, function(caller, args) {
-	ml_resume(caller, args[0].split(args[1]));
+	ml_resume(caller, args[0].split(args[1]).filter(Boolean));
 });
 ml_method_define("%", [MLStringT, MLRegexT], false, function(caller, args) {
 	let matches = args[0].match(args[1]);
