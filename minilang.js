@@ -3039,6 +3039,11 @@ ml_method_define("grow", [MLListT, MLSequenceT], true, function(caller, args) {
 		ml_resume(caller, list);
 	});
 });
+ml_method_define("empty", [MLListT], false, function(caller, args) {
+	let list = args[0];
+	list.splice(0);
+	ml_resume(caller, list);
+});
 
 let equalMethod = ml_method("=");
 ml_method_define("find", [MLListT, MLAnyT], false, function(caller, args) {
@@ -3241,6 +3246,42 @@ ml_method_define("grow", [MLMapT, MLSequenceT], true, function(caller, args) {
 	}, function(caller) {
 		ml_resume(caller, map);
 	});
+});
+ml_method_define("empty", [MLMapT], false, function(caller, args) {
+	let map = args[0];
+	map.nodes = {};
+	map.size =  0;
+	map.head = null;
+	map.tail = null;
+	ml_resume(caller, map);
+});
+ml_method("pop", [MLMapT], false, function(caller, args) {
+	let map = args[0];
+	let node = map.head;
+	if (!node) ml_resume(caller, null);
+	ml_map_delete(map, node.key);
+	ml_resume(caller, node.value);
+});
+ml_method("pop2", [MLMapT], false, function(caller, args) {
+	let map = args[0];
+	let node = map.head;
+	if (!node) ml_resume(caller, null);
+	ml_map_delete(map, node.key);
+	ml_resume(caller, [node.key, node.value]);
+});
+ml_method("pull", [MLMapT], false, function(caller, args) {
+	let map = args[0];
+	let node = map.tail;
+	if (!node) ml_resume(caller, null);
+	ml_map_delete(map, node.key);
+	ml_resume(caller, node.value);
+});
+ml_method("pull2", [MLMapT], false, function(caller, args) {
+	let map = args[0];
+	let node = map.tail;
+	if (!node) ml_resume(caller, null);
+	ml_map_delete(map, node.key);
+	ml_resume(caller, [node.key, node.value]);
 });
 ml_method_define("append", [MLStringBufferT, MLMapT], false, function(caller, args) {
 	let buffer = args[0];
