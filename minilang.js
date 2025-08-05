@@ -504,12 +504,31 @@ const MLPartialFunctionT = ml_type("partial-function", [MLFunctionT], {
 	}
 });
 export function ml_partial_function(func, count) {
-	return ml_value(MLPartialFunctionT, {func, count: 0, set: 0, args: new Array(count)});
+	return ml_value(MLPartialFunctionT, {func, count, set: 0, args: new Array(count)});
 }
 export function ml_partial_function_set(partial, index, value) {
 	partial.set += 1;
 	if (partial.count < index + 1) partial.count = index + 1;
 	partial.args[index] = value;
+}
+ObjectTypes["$!"] = function(args) {
+	let partial = ml_partial_function(args[0], args.length - 1);
+	for (let i = 1; i < args.length; ++i) {
+		if (args[i] != MLBlank) ml_partial_function_set(partial, i - 1, args[i]);
+	}
+	return partial;
+}
+
+const MLValueFunctionT = ml_type("value-function", [MLFunctionT], {
+	ml_call: function(caller, self, args) {
+		return ml_resume(caller, self.value);
+	}
+});
+export function ml_value_function(value) {
+	return ml_value(MLValueFunctionT, {value});
+}
+ObjectTypes["$="] = function(args) {
+	return ml_value_function(args[0]);
 }
 
 const soloMethod = ml_method("->");
