@@ -516,6 +516,7 @@ const soloMethod = ml_method("->");
 const duoMethod = ml_method("=>");
 const filterSoloMethod = ml_method("->?");
 const filterDuoMethod = ml_method("=>?");
+const indexMethod = ml_method("[]");
 
 const MLChainedFunctionT = ml_type("chained-function", [MLFunctionT, MLSequenceT], {
 	ml_call: function(caller, self, args) {
@@ -2460,6 +2461,30 @@ ml_method_define("=>?", [MLChainedFunctionT, MLFunctionT], false, function(calle
 	let entries = args[0].entries.slice();
 	entries.push(filterDuoMethod);
 	entries.push(args[1]);
+	ml_resume(caller, ml_chained(entries));
+});
+
+ml_method_define("[]", [MLPartialFunctionT], true, function(caller, args) {
+	let partial = ml_partial_function(indexMethod, args.length);
+	partial.count = args.length;
+	partial.set = args.length - 1;
+	for (let i = 1; i < args.length; ++i) partial.args[i] = args[i];
+	ml_resume(caller, ml_chained([args[0], partial]));
+});
+ml_method_define("[]", [MLChainedFunctionT], true, function(caller, args) {
+	let partial = ml_partial_function(indexMethod, args.length);
+	partial.count = args.length;
+	partial.set = args.length - 1;
+	for (let i = 1; i < args.length; ++i) partial.args[i] = args[i];
+	let entries = args[0].entries.slice();
+	entries.push(partial);
+	ml_resume(caller, ml_chained(entries));
+});
+ml_method_define("::", [MLChainedFunctionT, MLStringT], true, function(caller, args) {
+	let partial = ml_partial_function(symbolMethod, 2);
+	ml_partial_function_set(partial, 1, args[1]);
+	let entries = args[0].entries.slice();
+	entries.push(partial);
 	ml_resume(caller, ml_chained(entries));
 });
 
