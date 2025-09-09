@@ -1,0 +1,81 @@
+import: glib("gir/GLib")
+import: soup("gir/Soup@3.0")
+import: gobject("gir/GObject")
+import: minijs("fmt/minijs")
+import: json("fmt/json")
+
+logger: log("main")
+
+let Server := soup::Server()
+
+def MimeTypes := {
+	"xhtml" is "application/xhtml+xml",
+	"js" is "text/javascript",
+	"css" is "text/css",
+	"ico" is "image/png"
+}
+
+fun serve_static_content(Message, Path, MimeType) do
+	log::info("GET", Path)
+	let Channel := glib::IOChannel::new_file(Path, "r")
+	Channel:set_encoding(nil)
+	let (_, Content, Length) := Channel:read_to_end
+	Channel:close
+	Message:set_response(MimeType, soup::MemoryUse::static, Content)
+	Message:set_status(200, nil)
+on Error do
+	log::error(Error)
+	Message:set_status(404, nil)
+end
+
+Server:add_handler("/"; Server, Message, Path, Query, Client) do
+	serve_static_content(Message, "index.xhtml", MimeTypes["xhtml"])
+end
+
+Server:add_handler("/minilang.js"; Server, Message, Path, Query, Client) do
+	serve_static_content(Message, "minilang.js", MimeTypes["js"])
+end
+
+Server:add_handler("/test.js"; Server, Message, Path, Query, Client) do
+	serve_static_content(Message, "test.js", MimeTypes["js"])
+end
+
+let Globals := map(globals()):grow({
+	"print" is external("print"),
+	"json" is external("json")
+})
+
+let Externals := external::set()
+Externals:add("print", print)
+
+print('Globals = {Globals}\n')
+
+Server:add_handler("/compile"; Server, Message, Path, Query, Client) do
+	let Parser := parser()
+	let Compiler := compiler(global)
+	let Body := string(Message:get_request_body:flatten:get_data)
+	log::info("Body", Body)
+	let Form := soup::form_decode(Body)
+	log::info("Input", Form)
+	Parser:input(Form["input"])
+	do
+		let Function := Parser:compile(Compiler)
+		Message:set_response("application/json", soup::MemoryUse::static, json::encode(minijs::encode(Function, Externals)))
+		Message:set_status(200, nil)
+	on Error do
+		let Buffer := string::buffer()
+		Buffer:write('{Error:type}\n')
+		Buffer:write('{Error:message}\n')
+		for (Source, Line) in Error:trace do
+			Buffer:write('\t{Source}:{Line}\n')
+		end
+		log::error(Error)
+		Message:set_response("text/plain", soup::MemoryUse::static, Buffer:rest)
+		Message:set_status(404, nil)
+	end
+end
+
+Server:listen_all(9001, nil)
+log::info("Listening on http://localhost:9001")
+
+callcc(0)

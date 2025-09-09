@@ -23,7 +23,10 @@
 <pre id="console"/>
 <div id="output"/>
 <script type="module">
-import { Globals, ml_call, ml_resume, ml_decode, MLNil, MLStringT, ml_debug, ml_deref } from './minilang.js';
+import { Globals, ml_call, ml_resume, ml_decode, MLNil, MLStringT, ml_deref } from './minilang.js';
+import * as Minilang from './minilang.js';
+
+window.Minilang = Minilang;
 
 let inputElement = document.getElementById("input");
 let bytecodeElement = document.getElementById("compiled");
@@ -52,6 +55,14 @@ Globals.print = function(caller, args) {
 	ml_call(state, MLStringT.of, [args[0]]);
 }
 
+let breakpoints = {};
+let debug = {
+	run: debugger_run,
+	breakpoints: function(source) {
+		return breakpoints[source] || (breakpoints[source] = []);
+	}
+};
+
 compileElement.onclick = function() {
 	let request = new XMLHttpRequest();
 	request.onreadystatechange = function() {
@@ -59,11 +70,7 @@ compileElement.onclick = function() {
 			if (request.status === 200) {
 				let json = request.responseText;
 				bytecodeElement.textContent = json;
-				try {
-					window.main = ml_decode(JSON.parse(json));
-				} catch (error) {
-					consoleElement.textContent = error;
-				}
+				window.bytecode = JSON.parse(json);
 			} else {
 				consoleElement.textContent = request.responseText;
 			}
@@ -75,20 +82,16 @@ compileElement.onclick = function() {
 	request.send('input=' + encodeURIComponent(input.value));
 }
 
-let breakpoints = {};
-let debug = {
-	run: debugger_run,
-	breakpoints: function(source) {
-		return breakpoints[source] || (breakpoints[source] = []);
-	}
-};
-
 executeElement.onclick = function() {
-	if (debugElement.checked) {
-		debug.step_in = true;
-		ml_debug(debug);
-	} else {
-		ml_debug(null);
+	try {
+		if (debugElement.checked) {
+			debug.step_in = true;
+			window.main = ml_decode(window.bytecode, null, debug);
+		} else {
+			window.main = ml_decode(window.bytecode);
+		}
+	} catch (error) {
+		consoleElement.textContent = error;
 	}
 	consoleElement.textContent = "";
 	ml_call(null, window.main, []);
