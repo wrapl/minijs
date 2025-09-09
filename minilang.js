@@ -2761,6 +2761,9 @@ ml_method_define("upper", [MLStringT], false, function(caller, args) {
 ml_method_define("lower", [MLStringT], false, function(caller, args) {
 	ml_resume(caller, args[0].toLowerCase());
 });
+ml_method_define("title", [MLStringT], false, function(caller, args) {
+	ml_resume(caller, args[0].toLowerCase().replace(/\b\w/g, char => char.toUpperCase()));
+});
 ml_method_define("find", [MLStringT, MLStringT], false, function(caller, args) {
 	let index = args[0].indexOf(args[1]);
 	ml_resume(caller, index < 0 ? null : index + 1);
