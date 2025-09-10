@@ -2921,17 +2921,22 @@ ml_method_define("replace", [MLStringT, MLStringT, MLStringT], false, function(c
 ml_method_define("replace", [MLStringT, MLRegexT, MLStringT], false, function(caller, args) {
 	ml_resume(caller, args[0].replaceAll(new RegExp(args[1], "g"), args[2]));
 });
-ml_method_define("replace", [MLStringT, MLStringT, MLMapT], false, function(caller, args) {
+ml_method_define("replace", [MLStringT, MLMapT], false, function(caller, args) {
 	var str = args[0];
 	var failed = false;
 	args[2].forEach((key, value) => {
 		if (failed) { return; }
-		if (ml_typeof(value) === MLRegexT) {
-			str = str.replaceAll(key, value);
-		} else if (ml_typeof(value) === MLRegexT) {
-			str = str.replaceAll(new RegExp(key, "g"), value));
-		} else {
+		if (ml_typeof(value) !== MLStringT) {
+			failed = true;
 			str = ml_error("TypeError", "Unsupported replacement type: " + ml_typeof(value));
+			return;
+		}
+		if (ml_typeof(key) === MLStringT) {
+			str = str.replaceAll(key, value);
+		} else if (ml_typeof(key) === MLRegexT) {
+			str = str.replaceAll(new RegExp(key, "g"), value);
+		} else {
+			str = ml_error("TypeError", "Unsupported replacement type: " + ml_typeof(key));
 			failed = true;
 		}
 	});
