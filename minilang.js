@@ -2924,7 +2924,7 @@ ml_method_define("replace", [MLStringT, MLRegexT, MLStringT], false, function(ca
 ml_method_define("replace", [MLStringT, MLMapT], false, function(caller, args) {
 	var str = args[0];
 	var failed = false;
-	args[2].forEach((key, value) => {
+	args[1].forEach((key, value) => {
 		if (failed) { return; }
 		if (ml_typeof(value) !== MLStringT) {
 			failed = true;
