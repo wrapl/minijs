@@ -2921,6 +2921,22 @@ ml_method_define("replace", [MLStringT, MLStringT, MLStringT], false, function(c
 ml_method_define("replace", [MLStringT, MLRegexT, MLStringT], false, function(caller, args) {
 	ml_resume(caller, args[0].replaceAll(new RegExp(args[1], "g"), args[2]));
 });
+ml_method_define("replace", [MLStringT, MLStringT, MLMapT], false, function(caller, args) {
+	var str = args[0];
+	var failed = false;
+	args[2].forEach((key, value) => {
+		if (failed) { return; }
+		if (ml_typeof(value) === MLRegexT) {
+			str = str.replaceAll(key, value);
+		} else if (ml_typeof(value) === MLRegexT) {
+			str = str.replaceAll(new RegExp(key, "g"), value));
+		} else {
+			str = ml_error("TypeError", "Unsupported replacement type: " + ml_typeof(value));
+			failed = true;
+		}
+	});
+	ml_resume(caller, str);
+});
 ml_method_define("append", [MLStringBufferT, MLStringT], false, function(caller, args) {
 	args[0].string += args[1];
 	ml_resume(caller, args[0]);
