@@ -2921,27 +2921,104 @@ ml_method_define("replace", [MLStringT, MLStringT, MLStringT], false, function(c
 ml_method_define("replace", [MLStringT, MLRegexT, MLStringT], false, function(caller, args) {
 	ml_resume(caller, args[0].replaceAll(new RegExp(args[1], "g"), args[2]));
 });
+
+function ml_str_replacement_func(state, value) {
+	if  (ml_typeof(value) === MLErrorT) ml_resume(state.caller, value);
+	state.run = ml_replace_next;
+	return ml_call(state, appendMethod, [state.buffer, value]);
+}
+
+function ml_replace_next(state, value) {
+	if  (ml_typeof(value) === MLErrorT) ml_resume(state.caller, value);
+	let subject = state.subject;
+	for (;;) {
+		let matchStart = subject.length, matchEnd = subject.length;
+		let match = null;
+		let subArgs = null;
+		let subCount = 0;
+
+		for (let test of state.replacements) {
+			if (test.regex) {
+				let regex = test.regex;
+				let matches = regex.exec(subject);
+				if (matches) {
+					if (matches.index < matchStart) {
+						matchStart = matches.index;
+						subArgs = matches.map(match => match || "");
+						subCount = matches.length;
+						matchEnd = matches.index + matches[0].length;
+						match = test;
+					}
+				}
+			} else {
+				let findIndex = subject.indexOf(test.string);
+				if (findIndex !== -1) {
+					if (findIndex < matchStart) {
+						matchStart = findIndex;
+						subArgs = [subject.substring(findIndex, findIndex + test.string.length)];
+						subCount = 1;
+						matchEnd = findIndex + test.string.length;
+						match = test;
+					}
+				}
+			}
+		}
+
+		if (!match) break;
+
+		state.total++;
+		if (matchStart > 0) {
+			state.buffer.string += subject.substring(0, matchStart);
+		}
+
+		subject = subject.substring(matchEnd);
+
+		if (match.replacement.function) {
+			state.subject = subject;
+			state.run = ml_str_replacement_func;
+			return ml_call(state, match.replacement.function, subArgs);
+		} else {
+			state.buffer.string += match.replacement.string;
+		}
+	}
+
+	if (subject.length > 0) {
+		state.buffer.string += subject;
+	}
+
+	if (state.tuple) {
+		return ml_resume(state.caller, [state.buffer.string, state.total]);
+	} else {
+		return ml_resume(state.caller, state.buffer.string);
+	}
+}
+
 ml_method_define("replace", [MLStringT, MLMapT], false, function(caller, args) {
 	var str = args[0];
 	var failed = false;
+	let replacements = [];
 	args[1].forEach((key, value) => {
 		if (failed) { return; }
+		let replacement = {"string": value};
 		if (ml_typeof(value) !== MLStringT) {
-			failed = true;
-			str = ml_error("TypeError", "Unsupported replacement type: " + ml_typeof(value));
-			return;
+			replacement = {"function": value}
 		}
-		if (ml_typeof(key) === MLStringT) {
-			str = str.replaceAll(key, value);
+		if (ml_typeof(key) === MLStringT) {	
+			replacements.push({"string": key, "replacement": replacement});
 		} else if (ml_typeof(key) === MLRegexT) {
-			str = str.replaceAll(new RegExp(key, "g"), value);
+			replacements.push({"regex": key, "replacement": replacement});
 		} else {
-			str = ml_error("TypeError", "Unsupported replacement type: " + ml_typeof(key));
 			failed = true;
 		}
 	});
-	ml_resume(caller, str);
+	if (failed) {
+		ml_resume(caller, ml_error("TypeError", "Unsupported replacement type."));
+	} else {
+		let state = {caller, subject: str, replacements, buffer: ml_stringbuffer(), stack: [], run: ml_replace_next};
+		return ml_replace_next(state, MLNil);
+	}
 });
+
 ml_method_define("append", [MLStringBufferT, MLStringT], false, function(caller, args) {
 	args[0].string += args[1];
 	ml_resume(caller, args[0]);
