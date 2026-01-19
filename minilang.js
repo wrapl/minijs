@@ -531,6 +531,93 @@ ObjectTypes["$="] = function(args) {
 	return ml_value_function(args[0]);
 }
 
+const MLKeyStateT = ml_type("key-state", [], {
+	iter_next: function(caller, self) {
+		ml_iter_next(self, self.iter);
+	},
+	iter_key: function(caller, self) {
+		ml_resume(caller, self.index);
+	},
+	iter_value: function(caller, self) {
+		ml_iter_key(caller, self.iter);
+	}
+});
+
+const MLKeyIterT = ml_type("key-iter", [MLSequenceT], {
+	iterate: function(caller, self) {
+		let state = ml_value(MLKeyStateT, {index: 0, run: function(state, iter) {
+			if (ml_typeof(iter) === MLErrorT) return ml_resume(caller, iter);
+			if (iter == null) return ml_resume(caller, iter);
+			state.iter = iter;
+			state.index += 1;
+			return ml_resume(caller, state);
+		}});
+		ml_iterate(state, self.iter);
+	}
+});
+
+Globals["key"] = function(caller, args) {
+	ml_resume(caller, ml_value(MLKeyIterT, {iter: args[0]}));
+};
+
+const MLDupStateT = ml_type("dup-state", [], {
+	iter_next: function(caller, self) {
+		ml_iter_next(self, self.iter);
+	},
+	iter_key: function(caller, self) {
+		ml_iter_value(caller, self.iter);
+	},
+	iter_value: function(caller, self) {
+		ml_iter_value(caller, self.iter);
+	}
+});
+
+const MLDupIterT = ml_type("dup-iter", [MLSequenceT], {
+	iterate: function(caller, self) {
+		let state = ml_value(MLDupStateT, {index: 0, run: function(state, iter) {
+			if (ml_typeof(iter) === MLErrorT) return ml_resume(caller, iter);
+			if (iter == null) return ml_resume(caller, iter);
+			state.iter = iter;
+			state.index += 1;
+			return ml_resume(caller, state);
+		}});
+		ml_iterate(state, self.iter);
+	}
+});
+
+Globals["dup"] = function(caller, args) {
+	ml_resume(caller, ml_value(MLDupIterT, {iter: args[0]}));
+};
+
+const MLSwapStateT = ml_type("swap-state", [], {
+	iter_next: function(caller, self) {
+		ml_iter_next(self, self.iter);
+	},
+	iter_key: function(caller, self) {
+		ml_iter_value(caller, self.iter);
+	},
+	iter_value: function(caller, self) {
+		ml_iter_key(caller, self.iter);
+	}
+});
+
+const MLSwapIterT = ml_type("swap-iter", [MLSequenceT], {
+	iterate: function(caller, self) {
+		let state = ml_value(MLSwapStateT, {index: 0, run: function(state, iter) {
+			if (ml_typeof(iter) === MLErrorT) return ml_resume(caller, iter);
+			if (iter == null) return ml_resume(caller, iter);
+			state.iter = iter;
+			state.index += 1;
+			return ml_resume(caller, state);
+		}});
+		ml_iterate(state, self.iter);
+	}
+});
+
+Globals["swap"] = function(caller, args) {
+	ml_resume(caller, ml_value(MLSwapIterT, {iter: args[0]}));
+};
+
 const soloMethod = ml_method("->");
 const duoMethod = ml_method("=>");
 const filterSoloMethod = ml_method("->?");
