@@ -165,6 +165,9 @@ export function ml_identity(caller, args) {
 export const MLFunctionT = Globals["function"] = ml_type("function");
 export const MLSequenceT = ml_type("sequence");
 
+MLTypeT.parents.unshift(MLFunctionT);
+MLTypeT.rank = Math.max(MLTypeT.rank, MLFunctionT.rank + 1);
+
 function ml_sequence_reduce(caller, sequence, callback, finish) {
 	function next_fn(state, iter) {
 		if (ml_typeof(iter) === MLErrorT) return ml_resume(caller, iter);
