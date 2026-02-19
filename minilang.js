@@ -3297,6 +3297,48 @@ ml_method_define("find", [MLListT, MLAnyT], false, function(caller, args) {
 	ml_call(state, equalMethod, [value, node]);
 });
 
+ml_method_define("remove", [MLListT, MLFunctionT], false, function(caller, args) {
+	let list = args[0];
+	if (list.length == 0) return ml_resume(caller, []);
+	let removed = [];
+	let fn = args[1];
+	let node = list[0];
+	let state = {caller, list, node, index: 1, run: function(state, value) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, value);
+		if (value != null) {
+			removed.push(state.node);
+			state.list.splice(state.index, 1);
+			--state.index;
+		}
+		++state.index;
+		if (state.list.length <= state.index) return ml_resume(state.caller, removed);
+		state.node = state.list[state.index];
+		ml_call(state, fn, [state.node]);
+	}};
+	ml_call(state, fn, [state.node]);
+});
+
+ml_method_define("filter", [MLListT, MLFunctionT], false, function(caller, args) {
+	let list = args[0];
+	if (list.length == 0) return ml_resume(caller, []);
+	let removed = [];
+	let fn = args[1];
+	let node = list[0];
+	let state = {caller, list, node, index: 1, run: function(state, value) {
+		if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, value);
+		if (value == null) {
+			removed.push(state.node);
+			state.list.splice(state.index, 1);
+			--state.index;
+		}
+		++state.index;
+		if (state.list.length <= state.index) return ml_resume(state.caller, removed);
+		state.node = state.list[state.index];
+		ml_call(state, fn, [state.node]);
+	}};
+	ml_call(state, fn, [state.node]);
+});
+
 function ml_list_sort_run(state, value) {
 	if (ml_typeof(value) === MLErrorT) return ml_resume(state.caller, value);
 	let list = state.list, i = state.i, j = state.j, k;
