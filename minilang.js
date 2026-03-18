@@ -738,7 +738,27 @@ export function ml_chained(entries) {
 	return ml_value(MLChainedFunctionT, {entries});
 }
 
-export const MLTupleT = Globals["tuple"] = ml_type("tuple", [], {
+const MLTupleIterT = ml_type("tuple-iter", [], {
+	iter_next: function(caller, self) {
+		let index = self.index + 1;
+		if (index >= self.values.length) {
+			ml_resume(caller, null);
+		} else {
+			self.index = index;
+			ml_resume(caller, self);
+		}
+	},
+	iter_key: function(caller, self) {
+		ml_resume(caller, self.index + 1);
+	},
+	iter_value: function(caller, self) {
+		ml_resume(caller, self.values[self.index]);
+	}
+});
+export const MLTupleT = Globals["tuple"] = ml_type("tuple", [MLSequenceT], {
+	ml_hash: function(self) {
+		return self.values.map(ml_hash).join(",");
+	},
 	ml_assign: function(self, values) {
 		let count = self.values.length;
 		for (let i = 0; i < count; ++i) {
@@ -749,11 +769,17 @@ export const MLTupleT = Globals["tuple"] = ml_type("tuple", [], {
 		}
 		return values;
 	},
+	iterate: function(caller, self) {
+		ml_resume(caller, ml_value(MLTupleIterT, {values: self.values, index: 0}));
+	},
 	unpack: function(self, index) {
 		if (index > self.values.length) return null;
 		return self.values[index - 1];
 	}
 });
+MLTupleT.prototype.valueOf = function() {
+	return "tuple:" + this.values.join(",");
+};
 export function ml_tuple(size) {
 	return ml_value(MLTupleT, {values: new Array(size)});
 }
@@ -849,7 +875,7 @@ export function ml_map_insert(map, key, value) {
 		nodes = map.nodes[hash] = [];
 	} else for (let i = 0; i < nodes.length; ++i) {
 		let node = nodes[i];
-		if (node.key === key) { // TODO: replace with Minilang comparison
+		if (node.key.valueOf() === key.valueOf()) { // TODO: replace with Minilang comparison
 			let old = node.value;
 			node.value = value;
 			if (ml_typeof(value) === MLUninitializedT) ml_uninitialized_use(value, node, "value");
@@ -874,7 +900,7 @@ export function ml_map_delete(map, key) {
 	let nodes = map.nodes[hash];
 	if (nodes) for (let i = 0; i < nodes.length; ++i) {
 		let node = nodes[i];
-		if (node.key === key) {
+		if (node.key.valueOf() === key.valueOf()) {
 			nodes.splice(i, 1);
 			if (node.prev) {
 				node.prev.next = node.next;
@@ -897,7 +923,7 @@ export function ml_map_search(map, key) {
 	let nodes = map.nodes[hash];
 	if (nodes) for (let i = 0; i < nodes.length; ++i) {
 		let node = nodes[i];
-		if (node.key === key) return node;
+		if (node.key.valueOf() === key.valueOf()) return node;
 	}
 	return null;
 }
@@ -2496,22 +2522,22 @@ ml_method_define("append", [MLStringBufferT, MLSomeT], false, function(caller, a
 });
 
 ml_method_define("=", [MLAnyT, MLAnyT], false, function(caller, args) {
-	ml_resume(caller, args[0] === args[1] ? args[1] : null);
+	ml_resume(caller, args[0].valueOf() === args[1].valueOf() ? args[1] : null);
 });
 ml_method_define("!=", [MLAnyT, MLAnyT], false, function(caller, args) {
-	ml_resume(caller, args[0] !== args[1] ? args[1] : null);
+	ml_resume(caller, args[0].valueOf() !== args[1].valueOf() ? args[1] : null);
 });
 ml_method_define("<", [MLAnyT, MLAnyT], false, function(caller, args) {
-	ml_resume(caller, args[0] < args[1] ? args[1] : null);
+	ml_resume(caller, args[0].valueOf() < args[1].valueOf() ? args[1] : null);
 });
 ml_method_define(">", [MLAnyT, MLAnyT], false, function(caller, args) {
-	ml_resume(caller, args[0] > args[1] ? args[1] : null);
+	ml_resume(caller, args[0].valueOf() > args[1].valueOf() ? args[1] : null);
 });
 ml_method_define("<=", [MLAnyT, MLAnyT], false, function(caller, args) {
-	ml_resume(caller, args[0] <= args[1] ? args[1] : null);
+	ml_resume(caller, args[0].valueOf() <= args[1].valueOf() ? args[1] : null);
 });
 ml_method_define(">=", [MLAnyT, MLAnyT], false, function(caller, args) {
-	ml_resume(caller, args[0] >= args[1] ? args[1] : null);
+	ml_resume(caller, args[0].valueOf() >= args[1].valueOf() ? args[1] : null);
 });
 
 ["=", "!=", "<", ">", "<=", ">="].forEach(function(op) {
