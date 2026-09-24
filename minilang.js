@@ -3392,7 +3392,7 @@ function ml_list_sort_run(state, value) {
 }
 ml_method_define("sort", [MLListT], false, function(caller, args) {
 	let list = args[0];
-	if (!list.length) return ml_resume(caller, list);
+	if (list.length <= 1) return ml_resume(caller, list);
 	let compare = ml_method("<");
 	let a = 0, b = list.length - 1;
 	let i = a, j = b;
@@ -3402,7 +3402,7 @@ ml_method_define("sort", [MLListT], false, function(caller, args) {
 });
 ml_method_define("sort", [MLListT, MLFunctionT], false, function(caller, args) {
 	let list = args[0];
-	if (!list.length) return ml_resume(caller, list);
+	if (list.length <= 1) return ml_resume(caller, list);
 	let compare = args[1];
 	let a = 0, b = list.length - 1;
 	let i = a, j = b;
